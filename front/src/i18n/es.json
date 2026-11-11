@@ -1,0 +1,35 @@
+{
+  "menu": {
+    "home": "Inicio",
+    "faq": "Preguntas frecuentes",
+    "gallery": "Galería",
+    "buy": "Comprar entradas"
+  },
+  "tickets": {
+    "title": "Reservar entradas",
+    "subtitle": "Prueba Stripe Checkout con adultos/niños",
+    "total": "Total",
+    "euQuestion": "¿Eres ciudadano de la Unión Europea?",
+    "yes": "Sí",
+    "no": "No",
+    "date": "Fecha",
+    "time": "Hora",
+    "entries": "Entradas",
+    "adult": "Adulto",
+    "adultHint": "+17 años",
+    "kid": "Niño",
+    "kidHint": "-17 años",
+    "each": "c/u",
+    "subtotal": "Subtotal",
+    "pay": "Pagar con Stripe",
+    "note": "* Esto te redirige a Stripe Checkout (modo prueba)."
+  },
+  "success": {
+    "title": "¡Pago realizado con éxito!",
+    "subtitle": "Tu pago fue procesado correctamente."
+  },
+  "cancel": {
+    "title": "Pago cancelado",
+    "subtitle": "No se realizó ningún cobro."
+  }
+}
