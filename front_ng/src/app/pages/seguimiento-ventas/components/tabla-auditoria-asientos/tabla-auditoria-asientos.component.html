@@ -1,0 +1,125 @@
+<div class="card">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+            <div class="font-semibold text-xl text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                <i class="pi pi-history text-primary"></i>
+                Auditoría Global de Butacas y Ventas Recientes
+            </div>
+            <span class="text-muted-color text-sm">
+                Historial cronológico de reservas y compras registradas en todas las graderías del sistema.
+            </span>
+        </div>
+        <p-tag [value]="store.auditoriaAsientos().length + ' Transacciones'" severity="info" [rounded]="true" />
+    </div>
+
+    <p-table
+        [value]="store.auditoriaAsientos()"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        responsiveLayout="scroll"
+        styleClass="p-datatable-gridlines"
+    >
+        <ng-template #header>
+            <tr>
+                <th style="width: 3.5rem" class="text-center">#</th>
+                <th style="width: 6.5rem" class="text-center" pSortableColumn="codigo">
+                    Asiento <p-sortIcon field="codigo" />
+                </th>
+                <th pSortableColumn="graderia_nombre">
+                    Gradería <p-sortIcon field="graderia_nombre" />
+                </th>
+                <th pSortableColumn="operador_nombre">
+                    Operador / Cajero <p-sortIcon field="operador_nombre" />
+                </th>
+                <th pSortableColumn="cliente_nombre">
+                    Cliente <p-sortIcon field="cliente_nombre" />
+                </th>
+                <th>Celular</th>
+                <th class="text-center" pSortableColumn="estado" style="width: 8rem">
+                    Estado <p-sortIcon field="estado" />
+                </th>
+                <th class="text-right" pSortableColumn="monto" style="width: 9rem">
+                    Monto <p-sortIcon field="monto" />
+                </th>
+                <th class="text-center" pSortableColumn="pagado_at" style="width: 11rem">
+                    Fecha Transacción <p-sortIcon field="pagado_at" />
+                </th>
+            </tr>
+        </ng-template>
+
+        <ng-template #body let-a let-rowIndex="rowIndex">
+            <tr>
+                <td class="text-center text-muted-color">
+                    {{ rowIndex + 1 }}
+                </td>
+
+                <!-- Asiento Código -->
+                <td class="text-center">
+                    <p-tag [value]="a.codigo" severity="info" />
+                </td>
+
+                <!-- Gradería -->
+                <td class="font-medium text-surface-900 dark:text-surface-0">
+                    {{ a.graderia_nombre }}
+                </td>
+
+                <!-- Operador -->
+                <td>
+                    <div class="font-medium text-surface-900 dark:text-surface-0">{{ a.operador_nombre }}</div>
+                    <div class="text-xs text-muted-color">@{{ a.operador_username }}</div>
+                </td>
+
+                <!-- Cliente -->
+                <td class="font-medium text-surface-900 dark:text-surface-0">
+                    {{ a.cliente_nombre || 'Sin cliente' }}
+                </td>
+
+                <!-- Celular -->
+                <td>
+                    @if (a.cliente_celular) {
+                        <a
+                            [href]="'https://wa.me/591' + a.cliente_celular"
+                            target="_blank"
+                            class="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1 hover:underline"
+                            title="Enviar WhatsApp"
+                        >
+                            <i class="pi pi-whatsapp"></i>
+                            {{ a.cliente_celular }}
+                        </a>
+                    } @else {
+                        <span class="text-muted-color">S/N</span>
+                    }
+                </td>
+
+                <!-- Estado -->
+                <td class="text-center">
+                    <p-tag
+                        [value]="a.estado"
+                        [severity]="getEstadoSeverity(a.estado)"
+                        [rounded]="true"
+                    />
+                </td>
+
+                <!-- Monto -->
+                <td class="text-right font-mono font-bold text-surface-900 dark:text-surface-0">
+                    Bs. {{ formatMoney(a.monto) }}
+                </td>
+
+                <!-- Fecha / Hora -->
+                <td class="text-center text-muted-color text-sm">
+                    {{ (a.pagado_at || a.reservado_at || a.updated_at) | date:'dd/MM/yyyy HH:mm' }}
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template #emptymessage>
+            <tr>
+                <td colspan="9" class="text-center py-8 text-muted-color">
+                    <i class="pi pi-inbox text-3xl block mb-2 opacity-50"></i>
+                    No se encontraron butacas vendidas ni reservadas con los filtros seleccionados.
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>

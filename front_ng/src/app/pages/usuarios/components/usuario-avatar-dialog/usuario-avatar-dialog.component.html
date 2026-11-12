@@ -1,0 +1,96 @@
+<p-dialog 
+    [header]="'Actualizar Avatar: ' + (usuario?.username || '')" 
+    [(visible)]="visible" 
+    [modal]="true" 
+    [closable]="!cargando"
+    [draggable]="false" 
+    [resizable]="false" 
+    [style]="{ width: '450px', maxWidth: '95vw' }"
+    styleClass="rounded-3xl overflow-hidden shadow-2xl"
+    (onHide)="cerrar()"
+>
+    <div class="flex flex-col items-center gap-5 pt-2">
+        <!-- Visualización Actual vs Previa -->
+        <div class="relative group">
+            @if (imagenPreviaUrl) {
+                <img 
+                    [src]="imagenPreviaUrl" 
+                    alt="Previsualización" 
+                    class="w-36 h-36 rounded-full object-cover border-4 border-primary shadow-lg"
+                />
+            } @else if (usuario?.avatar) {
+                <img 
+                    [src]="usuarioService.obtenerUrlAvatar(usuario?.avatar)" 
+                    alt="Avatar Actual" 
+                    class="w-36 h-36 rounded-full object-cover border-4 border-surface-200 dark:border-surface-700 shadow-lg"
+                />
+            } @else {
+                <div class="w-36 h-36 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-4xl border-4 border-primary/20 shadow-inner">
+                    {{ obtenerIniciales(usuario?.name) }}
+                </div>
+            }
+
+            @if (imagenPreviaUrl) {
+                <span class="absolute bottom-1 right-1 bg-primary text-primary-contrast rounded-full p-1.5 shadow-md text-xs">
+                    <i class="pi pi-check"></i>
+                </span>
+            }
+        </div>
+
+        <div class="text-center">
+            <h4 class="font-bold text-surface-900 dark:text-surface-0 m-0">{{ usuario?.name }}</h4>
+            <span class="text-xs text-muted-color font-mono">&#64;{{ usuario?.username }}</span>
+        </div>
+
+        <!-- Zona de Selección de Archivo -->
+        <div class="w-full">
+            <input 
+                #fileInput 
+                type="file" 
+                accept="image/png, image/jpeg, image/webp" 
+                (change)="alSeleccionarArchivo($event)" 
+                class="hidden"
+            />
+            
+            <div 
+                class="border-2 border-dashed border-surface-300 dark:border-surface-700 hover:border-primary dark:hover:border-primary rounded-2xl p-6 text-center cursor-pointer transition-colors bg-surface-50 dark:bg-surface-800/40"
+                (click)="fileInput.click()"
+            >
+                <i class="pi pi-cloud-upload text-3xl text-primary mb-2"></i>
+                <div class="text-sm font-semibold text-surface-800 dark:text-surface-200">
+                    {{ archivoSeleccionado ? archivoSeleccionado.name : 'Haz clic para seleccionar una foto' }}
+                </div>
+                <p class="text-xs text-muted-color mt-1 mb-0">Formatos: JPG, PNG o WebP (Máx. 3MB)</p>
+            </div>
+        </div>
+
+        @if (errorMensaje) {
+            <div class="w-full bg-red-500/10 text-red-600 dark:text-red-400 p-2.5 rounded-xl text-xs flex items-center gap-2">
+                <i class="pi pi-times-circle"></i>
+                <span>{{ errorMensaje }}</span>
+            </div>
+        }
+
+        <!-- Botones de Acción -->
+        <div class="flex items-center justify-end gap-2 w-full pt-3 border-t border-surface-200 dark:border-surface-800">
+            <p-button 
+                label="Cancelar" 
+                icon="pi pi-times" 
+                [rounded]="true" 
+                [text]="true" 
+                severity="secondary" 
+                (click)="cerrar()"
+                [disabled]="cargando"
+            />
+            <p-button 
+                label="Guardar Avatar" 
+                icon="pi pi-upload" 
+                [rounded]="true" 
+                (click)="guardarAvatar()"
+                [loading]="cargando"
+                [disabled]="!archivoSeleccionado || cargando"
+                styleClass="shadow-md"
+            />
+        </div>
+    </div>
+</p-dialog>

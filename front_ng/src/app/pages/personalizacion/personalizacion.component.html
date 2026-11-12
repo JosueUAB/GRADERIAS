@@ -1,0 +1,376 @@
+<div class="flex flex-col gap-6">
+    <!-- Encabezado Principal -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight m-0">
+                    Personalización de Tema & Marca Visual
+                </h2>
+                <p-tag value="Solo Administrador" severity="danger" [rounded]="true" styleClass="text-[10px] font-bold" />
+            </div>
+            <p class="text-sm text-muted-color m-0">
+                Ajusta la paleta cromática, presets estructurales y superficies para adaptar el sistema a tu identidad corporativa.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Botón Restaurar Valores por Defecto -->
+            <p-button 
+                label="Restablecer Valores por Defecto" 
+                icon="pi pi-refresh" 
+                [rounded]="true" 
+                [outlined]="true" 
+                severity="secondary" 
+                (click)="restablecerDefectos()"
+                pTooltip="Revertir a los valores configurados en environment.ts (#960023, Lara, slate)"
+            />
+        </div>
+    </div>
+
+    <!-- Guía de Configuración en Variables de Entorno -->
+    <div class="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary text-primary-contrast flex items-center justify-center text-lg shrink-0">
+                <i class="pi pi-sliders-h"></i>
+            </div>
+            <div>
+                <h4 class="font-bold text-surface-900 dark:text-surface-0 m-0 text-sm">
+                    Configuración Permanente en Variables de Entorno
+                </h4>
+                <p class="text-xs text-muted-color mt-0.5 mb-0">
+                    Define tus colores en <code class="px-1.5 py-0.5 rounded bg-surface-200 dark:bg-surface-800 font-mono">src/environments/environment.ts</code>:
+                    <br />
+                    <code class="px-1.5 py-0.5 rounded bg-surface-200 dark:bg-surface-800 font-mono text-primary font-bold">primaryColor: '#960023'</code>, 
+                    <code class="px-1.5 py-0.5 rounded bg-surface-200 dark:bg-surface-800 font-mono text-emerald-600 font-bold ml-1">surfaceColor: '#1e293b'</code> y 
+                    <code class="px-1.5 py-0.5 rounded bg-surface-200 dark:bg-surface-800 font-mono text-rose-500 font-bold ml-1">primaryDarkColor: '#c81e3d'</code>.
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-muted-color">Preset actual:</span>
+            <p-tag [value]="presetActual()" severity="info" [rounded]="true" />
+            <span class="text-xs text-muted-color ml-2">Superficie:</span>
+            <p-tag [value]="superficieActual() || 'slate'" severity="secondary" [rounded]="true" />
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Columna Izquierda: Configuración de Color y Preset (2 Columnas) -->
+        <div class="lg:col-span-2 flex flex-col gap-6">
+            
+            <!-- TARJETA 1: COLOR PRIMARIO -->
+            <div class="card border border-surface-200 dark:border-surface-800 rounded-3xl p-6 bg-surface-0 dark:bg-surface-900 shadow-xs">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                            <i class="pi pi-palette"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-surface-900 dark:text-surface-0 m-0 text-base">Color Primario de la Aplicación</h3>
+                            <span class="text-xs text-muted-color">Color de acento para botones, matrices de butacas, navegación y selecciones.</span>
+                        </div>
+                    </div>
+
+                    <!-- Código Hex Actual -->
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full border border-surface-300 dark:border-surface-700 shadow-inner" [style.background-color]="colorHexActual"></span>
+                        <span class="font-mono text-xs font-bold text-surface-800 dark:text-surface-200">{{ colorHexActual }}</span>
+                    </div>
+                </div>
+
+                <!-- Input Hex y Selector Directo -->
+                <div class="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-surface-50 dark:bg-surface-800/40 border border-surface-200 dark:border-surface-700 mb-5">
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <label for="colorPicker" class="text-xs font-semibold text-surface-700 dark:text-surface-300">
+                            Colorpicker:
+                        </label>
+                        <input 
+                            id="colorPicker" 
+                            type="color" 
+                            [value]="colorHexActual" 
+                            (input)="alCambiarColorInput($event)"
+                            class="w-12 h-10 rounded-xl cursor-pointer border-2 border-surface-300 dark:border-surface-600 p-0.5 bg-transparent"
+                        />
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full sm:w-auto flex-1">
+                        <label for="colorText" class="text-xs font-semibold text-surface-700 dark:text-surface-300">
+                            Código Hex:
+                        </label>
+                        <input 
+                            pInputText 
+                            id="colorText" 
+                            type="text" 
+                            [(ngModel)]="colorHexInput" 
+                            (ngModelChange)="alCambiarColorTexto($event)"
+                            placeholder="#960023" 
+                            maxlength="7"
+                            class="rounded-xl font-mono text-sm uppercase w-32"
+                        />
+                        <p-button 
+                            label="Aplicar Hex" 
+                            icon="pi pi-check" 
+                            [rounded]="true" 
+                            size="small" 
+                            (click)="aplicarHexDirecto()"
+                        />
+                    </div>
+                </div>
+
+                <!-- Paleta de Colores Sugeridos para Graderías -->
+                <div class="mb-5">
+                    <span class="text-xs font-semibold text-muted-color uppercase tracking-wider block mb-3">
+                        Colores de Identidad Recomendados
+                    </span>
+                    <div class="flex flex-wrap gap-2.5">
+                        @for (sug of coloresSugeridos; track sug.hex) {
+                            <button
+                                type="button"
+                                (click)="seleccionarColorSugerido(sug.hex)"
+                                class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium cursor-pointer transition-all duration-200"
+                                [class.border-primary]="sug.hex.toLowerCase() === colorHexActual.toLowerCase()"
+                                [class.bg-primary/10]="sug.hex.toLowerCase() === colorHexActual.toLowerCase()"
+                                [class.border-surface-200]="sug.hex.toLowerCase() !== colorHexActual.toLowerCase()"
+                                [class.dark:border-surface-700]="sug.hex.toLowerCase() !== colorHexActual.toLowerCase()"
+                                [class.hover:border-surface-400]="sug.hex.toLowerCase() !== colorHexActual.toLowerCase()"
+                            >
+                                <span class="w-3.5 h-3.5 rounded-full shadow-inner border border-black/10" [style.background-color]="sug.hex"></span>
+                                <span class="text-surface-800 dark:text-surface-200">{{ sug.nombre }}</span>
+                                @if (sug.hex === '#960023') {
+                                    <span class="text-[9px] font-bold text-primary bg-primary/10 px-1 rounded">DEFAULT</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Escala de Sombras Generada en Vivo (50 a 950) -->
+                <div>
+                    <span class="text-xs font-semibold text-muted-color uppercase tracking-wider block mb-2">
+                        Escala Cromaticamente Balanceada (50 a 950)
+                    </span>
+                    <div class="grid grid-cols-11 gap-1.5 rounded-2xl p-2 bg-surface-100 dark:bg-surface-800/80 border border-surface-200 dark:border-surface-700">
+                        @for (sh of escalaSombras; track sh.shade) {
+                            <div 
+                                class="flex flex-col items-center justify-center p-1 rounded-xl transition-transform hover:scale-110 cursor-pointer shadow-xs"
+                                [style.background-color]="sh.color"
+                                [pTooltip]="sh.shade + ': ' + sh.color"
+                                tooltipPosition="top"
+                            >
+                                <span 
+                                    class="text-[9px] font-mono font-bold"
+                                    [class.text-white]="sh.shade >= 400"
+                                    [class.text-surface-900]="sh.shade < 400"
+                                >
+                                    {{ sh.shade }}
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- TARJETA 2: PRESET Y SUPERFICIE -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Selector de Preset -->
+                <div class="card border border-surface-200 dark:border-surface-800 rounded-3xl p-6 bg-surface-0 dark:bg-surface-900 shadow-xs">
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                            <i class="pi pi-box"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-surface-900 dark:text-surface-0 m-0 text-sm">Preset Estructural</h4>
+                            <span class="text-xs text-muted-color">Estilo de bordes y geometría</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 mt-4">
+                        @for (p of listaPresets; track p.nombre) {
+                            <div 
+                                (click)="seleccionarPreset(p.nombre)"
+                                class="flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all duration-200"
+                                [class.border-primary]="presetActual() === p.nombre"
+                                [class.bg-primary/5]="presetActual() === p.nombre"
+                                [class.border-surface-200]="presetActual() !== p.nombre"
+                                [class.dark:border-surface-800]="presetActual() !== p.nombre"
+                                [class.hover:border-surface-400]="presetActual() !== p.nombre"
+                            >
+                                <div>
+                                    <div class="font-semibold text-sm text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                                        {{ p.nombre }}
+                                        @if (p.nombre === 'Lara') {
+                                            <p-tag value="Predeterminado" severity="success" styleClass="text-[9px] py-0 px-1" />
+                                        }
+                                    </div>
+                                    <span class="text-xs text-muted-color">{{ p.descripcion }}</span>
+                                </div>
+                                <i 
+                                    class="pi" 
+                                    [class.pi-check-circle]="presetActual() === p.nombre"
+                                    [class.text-primary]="presetActual() === p.nombre"
+                                    [class.pi-circle]="presetActual() !== p.nombre"
+                                    [class.text-muted-color]="presetActual() !== p.nombre"
+                                ></i>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Selector de Superficie (Surface) -->
+                <div class="card border border-surface-200 dark:border-surface-800 rounded-3xl p-6 bg-surface-0 dark:bg-surface-900 shadow-xs">
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                            <i class="pi pi-clone"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-surface-900 dark:text-surface-0 m-0 text-sm">Superficie de Fondos</h4>
+                            <span class="text-xs text-muted-color">Gamas neutras o color hexadecimal personalizado</span>
+                        </div>
+                    </div>
+
+                    <!-- Input Hexadecimal para Superficie -->
+                    <div class="p-3 rounded-2xl bg-surface-50 dark:bg-surface-800/40 border border-surface-200 dark:border-surface-700 mt-2 mb-3">
+                        <label class="block text-xs font-semibold text-surface-700 dark:text-surface-300 mb-2">
+                            Personalizar Superficie (Hexadecimal):
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input 
+                                type="color" 
+                                [value]="superficieHexActual" 
+                                (input)="alCambiarSuperficieInput($event)"
+                                class="w-10 h-8 rounded-lg cursor-pointer border border-surface-300 dark:border-surface-600 p-0.5 bg-transparent"
+                            />
+                            <input 
+                                pInputText 
+                                type="text" 
+                                [(ngModel)]="superficieHexInput" 
+                                placeholder="#1e293b" 
+                                maxlength="7"
+                                class="rounded-xl font-mono text-xs uppercase flex-1"
+                            />
+                            <p-button 
+                                icon="pi pi-check" 
+                                [rounded]="true" 
+                                size="small" 
+                                (click)="aplicarSuperficieHexDirecto()"
+                                pTooltip="Aplicar Hexadecimal"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 mt-2">
+                        @for (s of listaSuperficies; track s.nombre) {
+                            <div 
+                                (click)="seleccionarSuperficie(s.nombre)"
+                                class="flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all duration-200"
+                                [class.border-primary]="superficieActual() === s.nombre"
+                                [class.bg-primary/5]="superficieActual() === s.nombre"
+                                [class.border-surface-200]="superficieActual() !== s.nombre"
+                                [class.dark:border-surface-800]="superficieActual() !== s.nombre"
+                                [class.hover:border-surface-400]="superficieActual() !== s.nombre"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <span class="w-3.5 h-3.5 rounded-full border border-black/10" [style.background-color]="s.color50"></span>
+                                        <span class="w-3.5 h-3.5 rounded-full border border-black/10" [style.background-color]="s.color500"></span>
+                                        <span class="w-3.5 h-3.5 rounded-full border border-black/10" [style.background-color]="s.color900"></span>
+                                    </div>
+                                    <span class="text-sm font-semibold capitalize text-surface-900 dark:text-surface-0">
+                                        {{ s.nombre }}
+                                        @if (s.nombre === 'slate') {
+                                            <p-tag value="Predeterminado" severity="info" styleClass="text-[9px] py-0 px-1 ml-1" />
+                                        }
+                                    </span>
+                                </div>
+                                <i 
+                                    class="pi" 
+                                    [class.pi-check-circle]="superficieActual() === s.nombre"
+                                    [class.text-primary]="superficieActual() === s.nombre"
+                                    [class.pi-circle]="superficieActual() !== s.nombre"
+                                    [class.text-muted-color]="superficieActual() !== s.nombre"
+                                ></i>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Columna Derecha: Previsualización en Vivo de Componentes (Live Preview) -->
+        <div class="flex flex-col gap-6">
+            
+            <div class="card border border-surface-200 dark:border-surface-800 rounded-3xl p-6 bg-surface-0 dark:bg-surface-900 shadow-xs sticky top-20">
+                <div class="flex items-center gap-2.5 mb-4">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                        <i class="pi pi-eye"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-surface-900 dark:text-surface-0 m-0 text-sm">Vista Previa en Vivo</h4>
+                        <span class="text-xs text-muted-color">Comportamiento en componentes del sistema</span>
+                    </div>
+                </div>
+
+                <!-- Muestra: Switch Modo Oscuro / Claro Rápido -->
+                <div class="flex items-center justify-between p-3.5 rounded-2xl bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i [class]="layoutService.isDarkTheme() ? 'pi pi-moon text-primary' : 'pi pi-sun text-amber-500'"></i>
+                        <span class="text-xs font-semibold text-surface-800 dark:text-surface-200">
+                            {{ layoutService.isDarkTheme() ? 'Modo Oscuro Activo' : 'Modo Claro Activo' }}
+                        </span>
+                    </div>
+                    <p-toggleswitch [ngModel]="layoutService.isDarkTheme()" (ngModelChange)="toggleTema()" />
+                </div>
+
+                <!-- Muestra: Botones Rounded -->
+                <div class="space-y-2 mb-4">
+                    <span class="text-[11px] font-semibold text-muted-color uppercase block">Botones del Sistema</span>
+                    <div class="flex flex-wrap gap-2">
+                        <p-button label="Botón Primario" icon="pi pi-check" [rounded]="true" size="small" />
+                        <p-button label="Secundario" icon="pi pi-times" [rounded]="true" [outlined]="true" size="small" severity="secondary" />
+                    </div>
+                </div>
+
+                <!-- Muestra: Butaca Seleccionada (Matriz de Gradería) -->
+                <div class="space-y-2 mb-4">
+                    <span class="text-[11px] font-semibold text-muted-color uppercase block">Butaca de Gradería (Seleccionada)</span>
+                    <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-100 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700">
+                        <div class="w-12 h-12 rounded-xl bg-primary text-primary-contrast flex flex-col items-center justify-center font-bold text-xs shadow-md border-2 border-primary-contrast/20">
+                            <span>A1</span>
+                            <span class="text-[9px] opacity-80">Bs 250</span>
+                        </div>
+                        <div class="text-xs text-surface-700 dark:text-surface-300">
+                            <strong>Butaca A1</strong> — Resaltada con el color de marca activo 
+                            <span class="font-mono text-primary font-bold">({{ colorHexActual }})</span>.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Muestra: Tags y Badges -->
+                <div class="space-y-2 mb-4">
+                    <span class="text-[11px] font-semibold text-muted-color uppercase block">Etiquetas y Estados</span>
+                    <div class="flex flex-wrap gap-2">
+                        <p-tag value="Activo / Seleccionado" [rounded]="true" />
+                        <p-tag value="Pagado" severity="success" [rounded]="true" />
+                        <p-tag value="Reservado" severity="warn" [rounded]="true" />
+                    </div>
+                </div>
+
+                <!-- Muestra: Input con Foco -->
+                <div class="space-y-2">
+                    <span class="text-[11px] font-semibold text-muted-color uppercase block">Campo de Texto con Enfoque</span>
+                    <input 
+                        pInputText 
+                        type="text" 
+                        value="Buscador de butacas..." 
+                        class="w-full rounded-xl text-xs py-2"
+                    />
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>

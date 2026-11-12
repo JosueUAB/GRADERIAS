@@ -1,0 +1,120 @@
+<div class="flex flex-col gap-6">
+    <!-- Encabezado Principal y Breadcrumb Informativo -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight m-0">
+                Gestión de Usuarios y Roles
+            </h2>
+            <p class="text-sm text-muted-color mt-1 mb-0">
+                Administración centralizada de identidades, perfiles, accesos y permisos Spatie.
+            </p>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Métricas Rápidas (KPIs) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Usuarios -->
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-muted-color uppercase tracking-wider block">Total Usuarios</span>
+                <span class="text-2xl font-bold text-surface-900 dark:text-surface-0 mt-1 block">
+                    {{ usuarioStore.totalUsuarios() }}
+                </span>
+                <span class="text-xs text-muted-color mt-0.5 block">Cuentas registradas</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl">
+                <i class="pi pi-users"></i>
+            </div>
+        </div>
+
+        <!-- Administradores -->
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-muted-color uppercase tracking-wider block">Administradores</span>
+                <span class="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1 block">
+                    {{ usuarioStore.totalAdmins() }}
+                </span>
+                <span class="text-xs text-muted-color mt-0.5 block">Acceso completo</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl">
+                <i class="pi pi-shield"></i>
+            </div>
+        </div>
+
+        <!-- Operadores / Vendedores -->
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-muted-color uppercase tracking-wider block">Operadores / Otros</span>
+                <span class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
+                    {{ usuarioStore.totalOperadores() }}
+                </span>
+                <span class="text-xs text-muted-color mt-0.5 block">Boletería y ventas</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl">
+                <i class="pi pi-ticket"></i>
+            </div>
+        </div>
+
+        <!-- Catálogo de Permisos Spatie -->
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-muted-color uppercase tracking-wider block">Permisos Spatie</span>
+                <span class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1 block">
+                    {{ usuarioStore.catalogoPermisos().length }}
+                </span>
+                <span class="text-xs text-muted-color mt-0.5 block">Capacidades del sistema</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl">
+                <i class="pi pi-key"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Componente Hijo: Directorio de Usuarios -->
+    <app-usuario-lista 
+        [usuarios]="usuarioStore.usuariosFiltrados()"
+        [cargando]="usuarioStore.cargando()"
+        [usuarioActualId]="authStore.usuario()?.id || 0"
+        (crearNuevo)="abrirCreacion()"
+        (editarUsuario)="abrirEdicion($event)"
+        (cambiarPassword)="abrirResetPassword($event)"
+        (cambiarAvatar)="abrirAvatar($event)"
+        (gestionarPermisos)="abrirPermisos($event)"
+        (eliminarUsuario)="confirmarEliminar($event)"
+        (filtrar)="onFiltrar($event)"
+        (refrescar)="onRefrescar()"
+    />
+
+    <!-- Diálogo Hijo: Formulario Crear / Editar -->
+    <app-usuario-form 
+        [(visible)]="modalFormVisible"
+        [usuario]="usuarioSeleccionado"
+        [cargando]="usuarioStore.cargando()"
+        (guardar)="onGuardarUsuario($event)"
+    />
+
+    <!-- Diálogo Hijo: Reset Contraseña -->
+    <app-usuario-password-dialog 
+        [(visible)]="modalPasswordVisible"
+        [usuario]="usuarioSeleccionado"
+        [cargando]="usuarioStore.cargando()"
+        (confirmar)="onConfirmarResetPassword($event)"
+    />
+
+    <!-- Diálogo Hijo: Actualizar Avatar -->
+    <app-usuario-avatar-dialog 
+        [(visible)]="modalAvatarVisible"
+        [usuario]="usuarioSeleccionado"
+        [cargando]="usuarioStore.cargando()"
+        (subirAvatar)="onSubirAvatar($event)"
+    />
+
+    <!-- Diálogo Hijo: Gestionar Permisos Spatie -->
+    <app-usuario-permisos-dialog 
+        [(visible)]="modalPermisosVisible"
+        [usuario]="usuarioSeleccionado"
+        [catalogoPermisos]="usuarioStore.catalogoPermisos()"
+        [cargando]="usuarioStore.cargando()"
+        (guardar)="onGuardarPermisos($event)"
+    />
+</div>

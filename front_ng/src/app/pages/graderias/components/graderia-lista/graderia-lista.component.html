@@ -1,0 +1,260 @@
+<div class="flex flex-col gap-6">
+    <!-- 1. Tarjetas KPI de Resumen Superior -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-3xl p-5 shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="text-xs font-semibold text-muted-color uppercase tracking-wider">Total Graderías</span>
+                <span class="text-3xl font-extrabold text-surface-900 dark:text-surface-0 mt-1">
+                    {{ store.totalGraderias() }}
+                </span>
+                <span class="text-xs text-muted-color mt-1">Sectores configurados</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <i class="pi pi-th-large text-2xl"></i>
+            </div>
+        </div>
+
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-3xl p-5 shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="text-xs font-semibold text-muted-color uppercase tracking-wider">Aforo Acumulado</span>
+                <span class="text-3xl font-extrabold text-primary mt-1">
+                    {{ store.capacidadTotalAcumulada() | number }}
+                </span>
+                <span class="text-xs text-muted-color mt-1">Butacas generadas</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <i class="pi pi-ticket text-2xl"></i>
+            </div>
+        </div>
+
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-3xl p-5 shadow-sm flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="text-xs font-semibold text-muted-color uppercase tracking-wider">Graderías Activas</span>
+                <span class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
+                    {{ store.totalActivas() }}
+                </span>
+                <span class="text-xs text-muted-color mt-1">Disponibles al público</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <i class="pi pi-check-circle text-2xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Tabla Principal de Graderías -->
+    <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-3xl p-6 shadow-sm">
+        <!-- Barra de Herramientas Superior -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Gestión de Graderías</h2>
+                <p class="text-sm text-muted-color">Administra las dimensiones, aforos y estados de tus graderías.</p>
+            </div>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <!-- Filtro de Búsqueda -->
+                <p-iconfield class="w-full sm:w-64">
+                    <p-inputicon styleClass="pi pi-search" />
+                    <input
+                        pInputText
+                        type="text"
+                        placeholder="Buscar gradería..."
+                        [ngModel]="store.filtro()"
+                        (ngModelChange)="store.setFiltro($event)"
+                        class="w-full rounded-2xl"
+                    />
+                </p-iconfield>
+
+                <!-- Botón Crear Nueva Gradería con estilo Rounded -->
+                <p-button
+                    label="Nueva Gradería"
+                    icon="pi pi-plus"
+                    [rounded]="true"
+                    (click)="crear.emit()"
+                    styleClass="shadow-sm font-bold"
+                />
+
+                <!-- Botón Recargar -->
+                <p-button
+                    icon="pi pi-refresh"
+                    [rounded]="true"
+                    [text]="true"
+                    severity="secondary"
+                    [loading]="store.cargando()"
+                    (click)="store.cargarGraderias()"
+                    pTooltip="Actualizar lista"
+                />
+            </div>
+        </div>
+
+        <!-- Tabla PrimeNG -->
+        <p-table
+            [value]="store.itemsFiltrados()"
+            [paginator]="true"
+            [rows]="10"
+            [rowsPerPageOptions]="[10, 25, 50]"
+            [loading]="store.cargando()"
+            responsiveLayout="scroll"
+            styleClass="p-datatable-sm"
+        >
+            <ng-template pTemplate="header">
+                <tr>
+                    <th pSortableColumn="nombre" class="rounded-l-2xl">
+                        Nombre / Sector <p-sortIcon field="nombre" />
+                    </th>
+                    <th pSortableColumn="direccion">Dirección</th>
+                    <th pSortableColumn="capacidad_total" class="text-center">
+                        Aforo <p-sortIcon field="capacidad_total" />
+                    </th>
+                    <th class="text-center">Matriz</th>
+                    <th class="text-center">Enlace Público</th>
+                    <th pSortableColumn="activo" class="text-center">
+                        Estado <p-sortIcon field="activo" />
+                    </th>
+                    <th class="text-center rounded-r-2xl">Acciones</th>
+                </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-graderia>
+                <tr class="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
+                    <!-- Nombre -->
+                    <td>
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                {{ graderia.nombre?.charAt(0)?.toUpperCase() || 'G' }}
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-surface-900 dark:text-surface-0 text-sm">
+                                    {{ graderia.nombre }}
+                                </span>
+                                <span class="text-xs text-muted-color font-mono">
+                                    Cod: {{ graderia.codigo || ('G-' + graderia.id) }}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Dirección -->
+                    <td>
+                        <span class="text-sm text-surface-700 dark:text-surface-300">
+                            {{ graderia.direccion || 'Sin dirección registrada' }}
+                        </span>
+                    </td>
+
+                    <!-- Capacidad Total -->
+                    <td class="text-center">
+                        <span class="font-extrabold text-primary text-base">
+                            {{ graderia.capacidad_total || (graderia.filas * graderia.columnas) }}
+                        </span>
+                        <span class="text-[11px] text-muted-color block">butacas</span>
+                    </td>
+
+                    <!-- Matriz / Dimensiones -->
+                    <td class="text-center">
+                        <span class="font-mono text-xs font-semibold px-2 py-1 bg-surface-100 dark:bg-surface-800 rounded-lg">
+                            {{ graderia.filas }}F x {{ graderia.columnas }}C
+                        </span>
+                    </td>
+
+                    <!-- Enlace Público -->
+                    <td class="text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <span class="font-mono text-xs text-muted-color">/g/{{ graderia.code }}</span>
+                            <p-button
+                                icon="pi pi-copy"
+                                [rounded]="true"
+                                [text]="true"
+                                size="small"
+                                severity="secondary"
+                                (click)="copiarLink(graderia.code)"
+                                pTooltip="Copiar Enlace Público"
+                            />
+                        </div>
+                    </td>
+
+                    <!-- Estado -->
+                    <td class="text-center">
+                        <p-tag
+                            [value]="graderia.activo ? 'ACTIVO' : 'INACTIVO'"
+                            [severity]="graderia.activo ? 'success' : 'danger'"
+                            styleClass="font-semibold text-xs"
+                        />
+                    </td>
+
+                    <!-- Acciones con Botones Rounded -->
+                    <td class="text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            <!-- Consola de Venta / Asientos -->
+                            <p-button
+                                icon="pi pi-ticket"
+                                [rounded]="true"
+                                severity="success"
+                                size="small"
+                                [routerLink]="['/graderias', graderia.id, 'venta']"
+                                pTooltip="Venta y Gestión de Asientos"
+                            />
+
+                            <!-- Ver Detalle -->
+                            <p-button
+                                icon="pi pi-eye"
+                                [rounded]="true"
+                                [text]="true"
+                                severity="info"
+                                size="small"
+                                (click)="verDetalle.emit(graderia)"
+                                pTooltip="Ver Detalles y Métricas"
+                            />
+
+                            <!-- Editar -->
+                            <p-button
+                                icon="pi pi-pencil"
+                                [rounded]="true"
+                                [text]="true"
+                                severity="warn"
+                                size="small"
+                                (click)="editar.emit(graderia)"
+                                pTooltip="Editar Dimensiones"
+                            />
+
+                            <!-- Eliminar -->
+                            <p-button
+                                icon="pi pi-trash"
+                                [rounded]="true"
+                                [text]="true"
+                                severity="danger"
+                                size="small"
+                                (click)="confirmarEliminar(graderia)"
+                                pTooltip="Eliminar Gradería"
+                            />
+                        </div>
+                    </td>
+                </tr>
+            </ng-template>
+
+            <!-- Estado Vacío -->
+            <ng-template pTemplate="emptymessage">
+                <tr>
+                    <td colspan="7" class="text-center py-12">
+                        <div class="flex flex-col items-center justify-center gap-3">
+                            <div class="w-16 h-16 rounded-full bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-muted-color">
+                                <i class="pi pi-th-large text-3xl"></i>
+                            </div>
+                            <span class="text-base font-semibold text-surface-900 dark:text-surface-0">
+                                No se encontraron graderías
+                            </span>
+                            <p class="text-xs text-muted-color max-w-sm">
+                                Empieza creando tu primer sector de gradería para definir filas, columnas y generar automáticamente las butacas.
+                            </p>
+                            <p-button
+                                label="Crear Primera Gradería"
+                                icon="pi pi-plus"
+                                [rounded]="true"
+                                (click)="crear.emit()"
+                                styleClass="mt-2 font-bold"
+                            />
+                        </div>
+                    </td>
+                </tr>
+            </ng-template>
+        </p-table>
+    </div>
+</div>

@@ -1,0 +1,207 @@
+<p-dialog
+    [header]="'Modificar Asiento: ' + (asiento()?.codigo || '')"
+    [(visible)]="visibleModel"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    styleClass="w-11/12 max-w-lg rounded-3xl"
+>
+    @if (asiento()) {
+        <form [formGroup]="formAsiento" (ngSubmit)="guardarCambios()" class="flex flex-col gap-4 py-2">
+            <!-- Badge Superior con Estado Actual y Dimensiones -->
+            <div class="bg-surface-50 dark:bg-surface-950 border border-surface-200 dark:border-surface-800 rounded-2xl p-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-mono font-bold text-base">
+                        {{ asiento()?.codigo }}
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs text-muted-color">Ubicación física:</span>
+                        <span class="text-xs font-semibold text-surface-900 dark:text-surface-0">
+                            Fila {{ asiento()?.fila }} · Columna {{ asiento()?.columna }}
+                        </span>
+                    </div>
+                </div>
+
+                <p-tag
+                    [value]="estadoActual"
+                    [severity]="obtenerSeveridadEstado(estadoActual)"
+                    styleClass="text-xs font-semibold"
+                />
+            </div>
+
+            <!-- Selector de Estado -->
+            <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-semibold text-surface-700 dark:text-surface-200">
+                    Estado de la Butaca *
+                </label>
+                <p-selectbutton
+                    [options]="opcionesEstados"
+                    formControlName="estado"
+                    optionLabel="label"
+                    optionValue="value"
+                    (onChange)="onCambioEstado($event.value)"
+                    styleClass="w-full"
+                />
+            </div>
+
+            <!-- Datos del Cliente y Precio (Si es PAGADO o RESERVADO) -->
+            @if (estadoActual === 'PAGADO' || estadoActual === 'RESERVADO') {
+                <div class="flex flex-col gap-3.5 p-4 bg-surface-50 dark:bg-surface-950 border border-surface-200 dark:border-surface-800 rounded-2xl">
+                    <!-- Nombre Cliente -->
+                    <div class="flex flex-col gap-1">
+                        <label for="clienteNombreAsiento" class="text-xs font-semibold text-surface-700 dark:text-surface-200">
+                            Nombre del Cliente *
+                        </label>
+                        <input
+                            pInputText
+                            id="clienteNombreAsiento"
+                            formControlName="clienteNombre"
+                            placeholder="Ej. Juan Pérez"
+                            class="w-full rounded-xl"
+                            [ngClass]="formAsiento.get('clienteNombre')?.invalid && formAsiento.get('clienteNombre')?.touched ? 'ng-invalid ng-dirty' : ''"
+                        />
+                        @if (formAsiento.get('clienteNombre')?.invalid && formAsiento.get('clienteNombre')?.touched) {
+                            <small class="text-red-500 font-semibold text-xs">El nombre del cliente es obligatorio.</small>
+                        }
+                    </div>
+
+                    <!-- Celular Cliente con Validación Estricta de Dígitos -->
+                    <div class="flex flex-col gap-1">
+                        <label for="clienteCelularAsiento" class="text-xs font-semibold text-surface-700 dark:text-surface-200">
+                            Celular / WhatsApp (Solo Números) *
+                        </label>
+                        <input
+                            pInputText
+                            id="clienteCelularAsiento"
+                            formControlName="clienteCelular"
+                            placeholder="Ej. 71234567"
+                            maxlength="15"
+                            (input)="filtrarSoloDigitosCelular($event)"
+                            class="w-full rounded-xl font-mono"
+                            [ngClass]="formAsiento.get('clienteCelular')?.invalid && formAsiento.get('clienteCelular')?.touched ? 'ng-invalid ng-dirty' : ''"
+                        />
+                        @if (formAsiento.get('clienteCelular')?.touched && formAsiento.get('clienteCelular')?.errors) {
+                            @if (formAsiento.get('clienteCelular')?.errors?.['required']) {
+                                <small class="text-red-500 font-semibold text-xs">El celular es obligatorio para venta o reserva.</small>
+                            }
+                            @if (formAsiento.get('clienteCelular')?.errors?.['pattern']) {
+                                <small class="text-red-500 font-semibold text-xs">Solo se permiten números (entre 7 y 15 dígitos sin letras).</small>
+                            }
+                        }
+                    </div>
+
+                    <!-- Monto Cobrado -->
+                    <div class="flex flex-col gap-1">
+                        <label for="montoAsiento" class="text-xs font-semibold text-surface-700 dark:text-surface-200">
+                            Monto Cobrado (Bs) *
+                        </label>
+                        <p-inputnumber
+                            id="montoAsiento"
+                            formControlName="monto"
+                            [min]="0"
+                            mode="currency"
+                            currency="BOB"
+                            locale="es-BO"
+                            styleClass="w-full"
+                            inputStyleClass="w-full rounded-xl font-bold"
+                        />
+                        @if (formAsiento.get('monto')?.invalid && formAsiento.get('monto')?.touched) {
+                            <small class="text-red-500 font-semibold text-xs">El monto debe ser igual o mayor a 0.</small>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (estadoActual === 'LIBRE') {
+                <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
+                    ℹ️ Al guardar como LIBRE, se limpiarán automáticamente los datos del cliente y monto de esta butaca.
+                </div>
+            }
+
+            @if (estadoActual === 'BLOQUEADO') {
+                <div class="p-3 bg-slate-500/10 border border-slate-500/20 rounded-xl text-xs text-slate-700 dark:text-slate-300">
+                    ℹ️ Esta butaca quedará inhabilitada temporalmente para compra y reserva.
+                </div>
+            }
+
+            <!-- Acciones Rápidas de Boleto si está vendido o con datos ingresados -->
+            @if ((asiento()?.estado === 'PAGADO' || asiento()?.estado === 'RESERVADO' || estadoActual === 'PAGADO' || estadoActual === 'RESERVADO') && (formAsiento.get('clienteNombre')?.value || asiento()?.cliente_nombre)) {
+                <div class="pt-2 border-t border-surface-200 dark:border-surface-800 flex items-center justify-between gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-muted-color">Boleto Digital:</span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <p-button
+                            icon="pi pi-file-pdf"
+                            label="Generar PDF"
+                            [rounded]="true"
+                            [outlined]="true"
+                            size="small"
+                            severity="danger"
+                            type="button"
+                            (click)="descargarBoletoIndividualPdf()"
+                            pTooltip="Descarga el ticket con QR en PDF"
+                        />
+                        <p-button
+                            icon="pi pi-print"
+                            label="Imprimir Boleto"
+                            [rounded]="true"
+                            [outlined]="true"
+                            size="small"
+                            severity="info"
+                            type="button"
+                            (click)="imprimirBoletoIndividual()"
+                        />
+                        <p-button
+                            icon="pi pi-whatsapp"
+                            label="WhatsApp"
+                            [rounded]="true"
+                            size="small"
+                            severity="success"
+                            type="button"
+                            (click)="enviarWhatsAppIndividual()"
+                        />
+                    </div>
+                </div>
+            }
+        </form>
+    }
+
+    <ng-template pTemplate="footer">
+        <div class="flex items-center justify-between pt-2 border-t border-surface-200 dark:border-surface-800">
+            <!-- Botón Liberar Directo -->
+            @if (asiento()?.estado !== 'LIBRE') {
+                <p-button
+                    label="Liberar Butaca"
+                    icon="pi pi-refresh"
+                    [rounded]="true"
+                    severity="danger"
+                    [outlined]="true"
+                    size="small"
+                    [loading]="guardando()"
+                    (click)="confirmarLiberar()"
+                    pTooltip="Limpia el cliente y la deja disponible"
+                />
+            } @else {
+                <div></div>
+            }
+
+            <div class="flex items-center gap-2">
+                <p-button
+                    label="Cancelar"
+                    [rounded]="true"
+                    [text]="true"
+                    severity="secondary"
+                    (click)="cerrar()"
+                    [disabled]="guardando()"
+                />
+                <p-button
+                    label="Guardar Cambios"
+                    icon="pi pi-check"
+                    [rounded]="true"
+                    [loading]="guardando()"
+                    (click)="guardarCambios()"
+                    styleClass="px-4 shadow-sm font-bold"
+                />
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>

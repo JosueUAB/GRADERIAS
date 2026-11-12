@@ -52,5 +52,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('mis-graderias/{graderia}/asientos/{asiento}', [AsientoController::class, 'updateOne']);
 //    Route::post('/api/whatsapp/boletos', [WhatsAppController::class, 'sendTickets']);
 
+    // Seguimiento y auditoría de ventas por usuario y gradería
+    Route::get('/ventas/seguimiento', [\App\Http\Controllers\ReporteVentasController::class, 'seguimiento']);
+    Route::get('/ventas/usuario/{user}', [\App\Http\Controllers\ReporteVentasController::class, 'detalleUsuario']);
+
 
 });

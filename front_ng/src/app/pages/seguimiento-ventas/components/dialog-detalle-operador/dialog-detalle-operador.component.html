@@ -1,0 +1,277 @@
+<p-dialog
+    [visible]="store.dialogDetalleVisible()"
+    (visibleChange)="onCerrar()"
+    [modal]="true"
+    [dismissableMask]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '92vw', maxWidth: '1050px' }"
+    styleClass="p-fluid"
+>
+    <!-- Header Personalizado -->
+    <ng-template #header>
+        <div class="flex items-center gap-3">
+            <img
+                [src]="obtenerAvatar(store.usuarioDetalle()?.usuario?.avatar)"
+                alt="Avatar"
+                class="w-12 h-12 rounded-full object-cover shadow-sm border border-surface"
+                (error)="$any($event.target).src = 'assets/layout/images/avatar.png'"
+            />
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xl font-bold text-surface-900 dark:text-surface-0">
+                        {{ store.usuarioDetalle()?.usuario?.name || 'Cargando Operador...' }}
+                    </span>
+                    <p-tag
+                        [value]="store.usuarioDetalle()?.usuario?.role || 'Operador'"
+                        severity="info"
+                        [rounded]="true"
+                    />
+                </div>
+                <div class="text-xs text-muted-color mt-0.5">
+                    Usuario: <span class="font-semibold text-surface-900 dark:text-surface-0">@{{ store.usuarioDetalle()?.usuario?.username }}</span>
+                    @if (store.usuarioDetalle()?.usuario?.telefono_contacto_1) {
+                        <span class="mx-2">•</span>
+                        <span>Cel: {{ store.usuarioDetalle()?.usuario?.telefono_contacto_1 }}</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </ng-template>
+
+    <!-- Estado Cargando -->
+    @if (store.cargandoDetalle()) {
+        <div class="flex flex-col items-center justify-center py-12">
+            <i class="pi pi-spin pi-spinner text-primary text-4xl mb-3"></i>
+            <span class="text-muted-color font-medium">Consultando registros y auditoría del operador...</span>
+        </div>
+    } @else if (store.usuarioDetalle(); as detalle) {
+        <div class="flex flex-col gap-6 pt-2">
+            <!-- 4 Tarjetas de Rendimiento del Operador (Estilo Sakai Nativo) -->
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 sm:col-span-6 lg:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Recaudado Total</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-xl">
+                                    Bs. {{ formatMoney(detalle.resumen.total_recaudado) }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-emerald-100 dark:bg-emerald-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-wallet text-emerald-500 text-lg"></i>
+                            </div>
+                        </div>
+                        <span class="text-xs text-muted-color">Ventas cobradas</span>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 lg:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-2">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Butacas Vendidas</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-xl">
+                                    {{ detalle.resumen.total_pagados }}
+                                    <span class="text-xs font-normal text-muted-color">/ {{ detalle.resumen.capacidad_total }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-check-circle text-blue-500 text-lg"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <p-progressbar [value]="detalle.resumen.porcentaje_ocupacion" [showValue]="false" styleClass="h-1.5 mb-1" />
+                            <div class="flex justify-between text-xs">
+                                <span class="text-muted-color">Ocupación</span>
+                                <span class="text-primary font-bold">{{ detalle.resumen.porcentaje_ocupacion }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 lg:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">En Reserva</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-xl">
+                                    {{ detalle.resumen.total_reservados }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-clock text-orange-500 text-lg"></i>
+                            </div>
+                        </div>
+                        <span class="text-xs text-orange-500 font-medium">Bs. {{ formatMoney(detalle.resumen.total_reservado_monto) }} por cobrar</span>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 lg:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Disponibles</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-xl">
+                                    {{ detalle.resumen.total_libres }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.5rem; height: 2.5rem">
+                                <i class="pi pi-th-large text-purple-500 text-lg"></i>
+                            </div>
+                        </div>
+                        <span class="text-xs text-muted-color">{{ detalle.resumen.total_graderias }} graderías a cargo</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graderías Asignadas al Operador -->
+            <div>
+                <div class="font-semibold text-base text-surface-900 dark:text-surface-0 mb-3 flex items-center gap-2">
+                    <i class="pi pi-building text-primary"></i>
+                    Graderías a cargo de este Operador ({{ detalle.graderias.length }})
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @for (g of detalle.graderias; track g.id) {
+                        <div class="card mb-0 p-3">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-surface-900 dark:text-surface-0 text-sm truncate" [title]="g.nombre">
+                                    {{ g.nombre }}
+                                </span>
+                                <p-tag [value]="'Bs. ' + formatMoney(g.total_recaudado)" severity="success" [rounded]="true" />
+                            </div>
+                            <div class="text-xs text-muted-color truncate mb-2">
+                                {{ g.direccion || 'Sin dirección registrada' }}
+                            </div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-muted-color">Vendidas: <strong class="text-surface-900 dark:text-surface-0">{{ g.total_pagados }}</strong>/{{ g.capacidad_total }}</span>
+                                <span class="text-primary font-bold">{{ g.porcentaje_ocupacion }}%</span>
+                            </div>
+                            <p-progressbar [value]="g.porcentaje_ocupacion" [showValue]="false" styleClass="h-1.5" />
+                        </div>
+                    } @empty {
+                        <div class="col-span-full card mb-0 text-center py-6 text-muted-color">
+                            El usuario no tiene graderías asociadas actualmente.
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Tabla de Butacas Vendidas / Reservadas -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="font-semibold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                        <i class="pi pi-ticket text-primary"></i>
+                        Registro de Butacas Vendidas / Reservadas ({{ detalle.asientos_activos.length }})
+                    </div>
+                    <span class="text-xs text-muted-color font-medium hidden sm:inline">
+                        Movimientos de este operador
+                    </span>
+                </div>
+
+                <p-table
+                    [value]="detalle.asientos_activos"
+                    [paginator]="true"
+                    [rows]="6"
+                    [rowsPerPageOptions]="[6, 12, 24]"
+                    responsiveLayout="scroll"
+                    styleClass="p-datatable-gridlines"
+                >
+                    <ng-template #header>
+                        <tr>
+                            <th style="width: 3rem" class="text-center">#</th>
+                            <th style="width: 6rem" class="text-center">Asiento</th>
+                            <th>Gradería</th>
+                            <th>Cliente</th>
+                            <th>Celular</th>
+                            <th style="width: 7.5rem" class="text-center">Estado</th>
+                            <th style="width: 8rem" class="text-right">Monto</th>
+                            <th style="width: 10.5rem" class="text-center">Fecha Transacción</th>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #body let-s let-rowIndex="rowIndex">
+                        <tr>
+                            <td class="text-center text-muted-color">
+                                {{ rowIndex + 1 }}
+                            </td>
+                            <td class="text-center">
+                                <p-tag [value]="s.codigo" severity="info" />
+                            </td>
+                            <td class="font-medium text-surface-900 dark:text-surface-0">
+                                {{ s.graderia_nombre }}
+                            </td>
+                            <td class="font-medium text-surface-900 dark:text-surface-0">
+                                {{ s.cliente_nombre || 'Sin nombre' }}
+                            </td>
+                            <td>
+                                @if (s.cliente_celular) {
+                                    <a
+                                        [href]="'https://wa.me/591' + s.cliente_celular"
+                                        target="_blank"
+                                        class="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1 hover:underline text-xs"
+                                        title="Enviar WhatsApp"
+                                    >
+                                        <i class="pi pi-whatsapp"></i>
+                                        {{ s.cliente_celular }}
+                                    </a>
+                                } @else {
+                                    <span class="text-muted-color text-xs">S/N</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <p-tag
+                                    [value]="s.estado"
+                                    [severity]="getEstadoSeverity(s.estado)"
+                                    [rounded]="true"
+                                />
+                            </td>
+                            <td class="text-right font-mono font-bold text-surface-900 dark:text-surface-0">
+                                Bs. {{ formatMoney(s.monto) }}
+                            </td>
+                            <td class="text-center text-muted-color text-xs">
+                                {{ (s.pagado_at || s.reservado_at) | date:'dd/MM/yyyy HH:mm' }}
+                            </td>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #emptymessage>
+                        <tr>
+                            <td colspan="8" class="text-center py-6 text-muted-color">
+                                <i class="pi pi-inbox text-3xl block mb-2 opacity-50"></i>
+                                No hay butacas vendidas ni reservadas registradas para este operador.
+                            </td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </div>
+    }
+
+    <!-- Footer Modal -->
+    <ng-template #footer>
+        <div class="flex items-center justify-between w-full pt-2">
+            <span class="text-xs text-muted-color font-medium hidden sm:inline">
+                Control y Liquidación Financiera
+            </span>
+            <div class="flex items-center gap-2 ml-auto">
+                <p-button
+                    label="Cerrar"
+                    icon="pi pi-times"
+                    severity="secondary"
+                    [rounded]="true"
+                    (click)="onCerrar()"
+                />
+                @if (store.usuarioDetalle(); as det) {
+                    <p-button
+                        label="Descargar Cierre PDF"
+                        icon="pi pi-file-pdf"
+                        severity="danger"
+                        [rounded]="true"
+                        (click)="descargarLiquidacionPdf()"
+                    />
+                }
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>

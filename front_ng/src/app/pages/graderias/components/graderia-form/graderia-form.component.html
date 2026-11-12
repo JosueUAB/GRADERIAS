@@ -1,0 +1,280 @@
+<p-dialog
+    [header]="esEdicion() ? 'Editar Gradería: ' + (graderia()?.nombre || '') : 'Diseñar Nueva Gradería'"
+    [(visible)]="visibleModel"
+    [modal]="true"
+    [maximizable]="true"
+    [closable]="!store.guardando()"
+    [draggable]="false"
+    [resizable]="true"
+    styleClass="w-11/12 max-w-6xl rounded-3xl"
+>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 py-2">
+        <!-- Columna Izquierda: Parámetros del Formulario (5 columnas en lg) -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+            <!-- 1. Identificación y Ubicación -->
+            <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-4 flex flex-col gap-3 shadow-xs">
+                <div class="flex items-center gap-2 text-surface-900 dark:text-surface-0 font-bold text-sm">
+                    <i class="pi pi-id-card text-primary"></i>
+                    <span>1. Identificación</span>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label for="nombre" class="text-xs font-semibold text-surface-700 dark:text-surface-200">
+                        Nombre del Sector / Gradería *
+                    </label>
+                    <input
+                        pInputText
+                        id="nombre"
+                        [(ngModel)]="nombre"
+                        placeholder="Ej. Gradería Socavón - Sector A"
+                        class="w-full rounded-xl"
+                        required
+                    />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label for="direccion" class="text-xs font-semibold text-surface-700 dark:text-surface-200">
+                        Dirección o Referencia Física
+                    </label>
+                    <input
+                        pInputText
+                        id="direccion"
+                        [(ngModel)]="direccion"
+                        placeholder="Ej. Calle Bolívar esq. La Plata"
+                        class="w-full rounded-xl"
+                    />
+                </div>
+            </div>
+
+            <!-- 2. Dimensiones y Contadores Intuitivos -->
+            <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-4 flex flex-col gap-3 shadow-xs">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-surface-900 dark:text-surface-0 font-bold text-sm">
+                        <i class="pi pi-table text-primary"></i>
+                        <span>2. Dimensiones y Aforo</span>
+                    </div>
+                    <span class="text-xs font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
+                        {{ filas * columnas }} butacas
+                    </span>
+                </div>
+
+                <!-- Presets rápidos para un solo clic -->
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[11px] text-muted-color">Tamaños comunes:</span>
+                    <button
+                        type="button"
+                        class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-primary/20 text-surface-700 dark:text-surface-200 border border-surface-200 dark:border-surface-700 cursor-pointer transition-all"
+                        (click)="aplicarPreset(5, 10)"
+                    >
+                        5x10 (50)
+                    </button>
+                    <button
+                        type="button"
+                        class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-primary/20 text-surface-700 dark:text-surface-200 border border-surface-200 dark:border-surface-700 cursor-pointer transition-all"
+                        (click)="aplicarPreset(10, 20)"
+                    >
+                        10x20 (200)
+                    </button>
+                    <button
+                        type="button"
+                        class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-primary/20 text-surface-700 dark:text-surface-200 border border-surface-200 dark:border-surface-700 cursor-pointer transition-all"
+                        (click)="aplicarPreset(12, 25)"
+                    >
+                        12x25 (300)
+                    </button>
+                    <button
+                        type="button"
+                        class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-primary/20 text-surface-700 dark:text-surface-200 border border-surface-200 dark:border-surface-700 cursor-pointer transition-all"
+                        (click)="aplicarPreset(15, 30)"
+                    >
+                        15x30 (450)
+                    </button>
+                </div>
+
+                <!-- Contador de Filas -->
+                <div class="flex items-center justify-between p-3 bg-surface-50 dark:bg-surface-950 rounded-xl border border-surface-200 dark:border-surface-800">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-surface-800 dark:text-surface-100">Filas (Hacia atrás)</span>
+                        <span class="text-[11px] text-muted-color">Líneas de asientos de frente a fondo</span>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <p-button
+                            icon="pi pi-minus"
+                            [rounded]="true"
+                            [text]="true"
+                            severity="secondary"
+                            size="small"
+                            (click)="modificarFilas(-1)"
+                            [disabled]="filas <= 1"
+                        />
+                        <input
+                            pInputText
+                            type="number"
+                            [(ngModel)]="filas"
+                            min="1"
+                            max="500"
+                            class="w-16 text-center font-bold text-base py-1.5 rounded-lg border-surface-300 dark:border-surface-700"
+                        />
+                        <p-button
+                            icon="pi pi-plus"
+                            [rounded]="true"
+                            [text]="true"
+                            severity="secondary"
+                            size="small"
+                            (click)="modificarFilas(1)"
+                            [disabled]="filas >= 500"
+                        />
+                    </div>
+                </div>
+
+                <!-- Contador de Columnas -->
+                <div class="flex items-center justify-between p-3 bg-surface-50 dark:bg-surface-950 rounded-xl border border-surface-200 dark:border-surface-800">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-surface-800 dark:text-surface-100">Columnas (A lo ancho)</span>
+                        <span class="text-[11px] text-muted-color">Cantidad de butacas por cada fila</span>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <p-button
+                            icon="pi pi-minus"
+                            [rounded]="true"
+                            [text]="true"
+                            severity="secondary"
+                            size="small"
+                            (click)="modificarColumnas(-1)"
+                            [disabled]="columnas <= 1"
+                        />
+                        <input
+                            pInputText
+                            type="number"
+                            [(ngModel)]="columnas"
+                            min="1"
+                            max="500"
+                            class="w-16 text-center font-bold text-base py-1.5 rounded-lg border-surface-300 dark:border-surface-700"
+                        />
+                        <p-button
+                            icon="pi pi-plus"
+                            [rounded]="true"
+                            [text]="true"
+                            severity="secondary"
+                            size="small"
+                            (click)="modificarColumnas(1)"
+                            [disabled]="columnas >= 500"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Nomenclatura y Orientación -->
+            <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-4 flex flex-col gap-3 shadow-xs">
+                <div class="flex items-center gap-2 text-surface-900 dark:text-surface-0 font-bold text-sm">
+                    <i class="pi pi-compass text-primary"></i>
+                    <span>3. Orientación y Nomenclatura</span>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-semibold text-surface-700 dark:text-surface-200">
+                        Formato de Código en el Boleto
+                    </label>
+                    <p-select
+                        [options]="opcionesModo"
+                        [(ngModel)]="etiquetaModo"
+                        optionLabel="label"
+                        optionValue="value"
+                        styleClass="w-full rounded-xl"
+                    />
+                </div>
+
+                <!-- Orientación: Interruptores claros -->
+                <div class="flex flex-col gap-2 pt-1">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-50 dark:bg-surface-950 border border-surface-200 dark:border-surface-800">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-semibold text-surface-800 dark:text-surface-100">Fila 1 (o A) Adelante</span>
+                            <span class="text-[11px] text-muted-color">El conteo inicia de frente hacia atrás</span>
+                        </div>
+                        <p-toggleswitch [(ngModel)]="startTop" />
+                    </div>
+
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-50 dark:bg-surface-950 border border-surface-200 dark:border-surface-800">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-semibold text-surface-800 dark:text-surface-100">Columna 1 a la Izquierda</span>
+                            <span class="text-[11px] text-muted-color">El conteo inicia de izquierda a derecha</span>
+                        </div>
+                        <p-toggleswitch [(ngModel)]="startLeft" />
+                    </div>
+
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-50 dark:bg-surface-950 border border-surface-200 dark:border-surface-800">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-semibold text-surface-800 dark:text-surface-100">Visible al Público</span>
+                            <span class="text-[11px] text-muted-color">Permite que los clientes consulten el mapa</span>
+                        </div>
+                        <p-toggleswitch [(ngModel)]="activo" />
+                    </div>
+                </div>
+
+                <!-- En caso de edición: Opción de regeneración -->
+                @if (esEdicion()) {
+                    <div class="mt-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-3">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold text-amber-700 dark:text-amber-300">Regenerar Butacas</span>
+                            <span class="text-[11px] text-muted-color">Reinicia todas las butacas a disponibles.</span>
+                        </div>
+                        <p-toggleswitch [(ngModel)]="regenerarAsientos" />
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Vista Previa Adaptativa en Vivo (7 columnas en lg) -->
+        <div class="lg:col-span-7 flex flex-col gap-3">
+            <app-graderia-preview-matriz
+                [filas]="filas"
+                [columnas]="columnas"
+                [etiquetaModo]="etiquetaModo"
+                [startTop]="startTop"
+                [startLeft]="startLeft"
+            />
+
+            <!-- Tarjeta Informativa Amigable (Sin jerga técnica de backend) -->
+            <div class="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                        <i class="pi pi-check-circle text-xl"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-surface-900 dark:text-surface-0">
+                            Aforo Total: {{ filas * columnas }} butacas
+                        </span>
+                        <span class="text-[11px] text-muted-color">
+                            Las butacas estarán inmediatamente disponibles para la venta y reserva en cuanto guardes los cambios.
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-surface-200 dark:border-surface-800">
+            <p-button
+                label="Cancelar"
+                icon="pi pi-times"
+                [rounded]="true"
+                [text]="true"
+                severity="secondary"
+                (click)="cerrar()"
+                [disabled]="store.guardando()"
+            />
+            <p-button
+                [label]="esEdicion() ? 'Actualizar Gradería' : 'Crear Gradería'"
+                icon="pi pi-check"
+                [rounded]="true"
+                [loading]="store.guardando()"
+                [disabled]="!nombre || filas < 1 || columnas < 1"
+                (click)="guardar()"
+                styleClass="px-5 shadow-sm font-bold"
+            />
+        </div>
+    </ng-template>
+</p-dialog>

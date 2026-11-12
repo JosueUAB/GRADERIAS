@@ -19,7 +19,7 @@ class GraderiaController extends Controller
 
     public function repair(Request $request, Graderia $graderia)
     {
-        if ((int)$graderia->user_id !== (int)$request->user()->id) {
+        if (!$request->user()->esAdmin() && (int)$graderia->user_id !== (int)$request->user()->id) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 
@@ -39,7 +39,7 @@ class GraderiaController extends Controller
 
     public function venta(Request $request, Graderia $graderia)
     {
-        if ((int)$graderia->user_id !== (int)$request->user()->id) {
+        if (!$request->user()->esAdmin() && (int)$graderia->user_id !== (int)$request->user()->id) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 
@@ -74,17 +74,20 @@ class GraderiaController extends Controller
     {
         $user = $request->user();
 
-        return Graderia::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('id')
-            ->get();
+        $query = Graderia::query()->with('user:id,name,username,role,avatar');
+
+        if (!$user->esAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query->orderByDesc('id')->get();
     }
 
     // GET /mis-graderias/{graderia}?preview_rows=30&preview_cols=30
     public function show(Request $request, Graderia $graderia)
     {
-        // Seguridad básica (si tienes policies, cámbialo por authorize)
-        if ((int)$graderia->user_id !== (int)$request->user()->id) {
+        // Seguridad básica
+        if (!$request->user()->esAdmin() && (int)$graderia->user_id !== (int)$request->user()->id) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 
@@ -156,7 +159,7 @@ class GraderiaController extends Controller
 
     public function update(Request $request, Graderia $graderia)
     {
-        if ((int) $graderia->user_id !== (int) $request->user()->id) {
+        if (!$request->user()->esAdmin() && (int) $graderia->user_id !== (int) $request->user()->id) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 
@@ -200,7 +203,7 @@ class GraderiaController extends Controller
 
     public function destroy(Request $request, Graderia $graderia)
     {
-        if ((int)$graderia->user_id !== (int)$request->user()->id) {
+        if (!$request->user()->esAdmin() && (int)$graderia->user_id !== (int)$request->user()->id) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 

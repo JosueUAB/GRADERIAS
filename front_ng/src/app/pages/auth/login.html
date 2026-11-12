@@ -1,0 +1,160 @@
+<app-floating-configurator />
+
+<div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-screen p-4 transition-colors duration-300">
+    <div class="w-full max-w-md">
+        <!-- Tarjeta Principal con Estilo PrimeNG y Bordes Redondeados -->
+        <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-3xl p-8 shadow-xl transition-all duration-300">
+            
+            <!-- Header con Botón de Modo Oscuro/Claro y Marca -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                        <i class="pi pi-ticket text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-surface-900 dark:text-surface-0 leading-tight">Reserva Tickets</h1>
+                        <span class="text-xs text-muted-color">Sistema de Gestión de Graderías</span>
+                    </div>
+                </div>
+
+                <!-- Switch Rápido Modo Claro / Oscuro -->
+                <p-button 
+                    [icon]="layoutService.isDarkTheme() ? 'pi pi-sun' : 'pi pi-moon'" 
+                    [rounded]="true" 
+                    [text]="true" 
+                    severity="secondary"
+                    (click)="toggleTema()"
+                    [pTooltip]="layoutService.isDarkTheme() ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'"
+                />
+            </div>
+
+            <!-- Título de Sección -->
+            <div class="mb-6">
+                <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Iniciar Sesión</h2>
+                <p class="text-sm text-muted-color mt-1">Ingresa tus credenciales para administrar tus graderías y ventas.</p>
+            </div>
+
+            <!-- Mensaje de Error Reactivo desde AuthStore -->
+            @if (authStore.error()) {
+                <p-message severity="error" [text]="authStore.error()!" styleClass="w-full mb-4" />
+            }
+
+            <!-- Formulario de Acceso -->
+            <form (ngSubmit)="enviarLogin()" #loginForm="ngForm" class="flex flex-col gap-4">
+                <!-- Campo Usuario -->
+                <div class="flex flex-col gap-2">
+                    <label for="username" class="text-sm font-medium text-surface-700 dark:text-surface-200">
+                        Usuario
+                    </label>
+                    <span class="p-input-icon-left w-full">
+                        <i class="pi pi-user text-muted-color ml-3"></i>
+                        <input 
+                            pInputText 
+                            id="username" 
+                            name="username" 
+                            type="text" 
+                            [(ngModel)]="username" 
+                            required 
+                            placeholder="Ej. admin" 
+                            class="w-full pl-10 rounded-xl"
+                            [disabled]="authStore.cargando()"
+                        />
+                    </span>
+                </div>
+
+                <!-- Campo Contraseña -->
+                <div class="flex flex-col gap-2">
+                    <label for="password" class="text-sm font-medium text-surface-700 dark:text-surface-200">
+                        Contraseña
+                    </label>
+                    <p-password 
+                        id="password" 
+                        name="password" 
+                        [(ngModel)]="password" 
+                        [toggleMask]="true" 
+                        [feedback]="false" 
+                        [fluid]="true" 
+                        required
+                        placeholder="Ingresa tu contraseña"
+                        inputStyleClass="w-full rounded-xl"
+                        [disabled]="authStore.cargando()"
+                    />
+                </div>
+
+                <!-- Opciones: Recordarme y Olvidé Contraseña -->
+                <div class="flex items-center justify-between mt-1 text-sm">
+                    <div class="flex items-center gap-2">
+                        <p-checkbox 
+                            [(ngModel)]="rememberMe" 
+                            name="rememberMe" 
+                            [binary]="true" 
+                            inputId="remember" 
+                        />
+                        <label for="remember" class="text-surface-600 dark:text-surface-400 cursor-pointer select-none">
+                            Recordarme
+                        </label>
+                    </div>
+                    <button 
+                        type="button" 
+                        class="text-primary hover:underline font-medium text-sm border-none bg-transparent cursor-pointer p-0"
+                        (click)="mostrarDialogoRecuperar.set(true)"
+                    >
+                        ¿Olvidaste tu contraseña?
+                    </button>
+                </div>
+
+                <!-- Botón de Envío con Estilo Rounded PrimeNG -->
+                <p-button 
+                    type="submit" 
+                    label="Ingresar al Sistema" 
+                    icon="pi pi-sign-in"
+                    [rounded]="true" 
+                    [fluid]="true" 
+                    [loading]="authStore.cargando()"
+                    [disabled]="!username || !password || authStore.cargando()"
+                    styleClass="mt-2 py-3 font-semibold shadow-md"
+                />
+            </form>
+
+
+
+            <!-- Pie de Tarjeta -->
+            <div class="mt-6 text-center text-xs text-muted-color">
+                © {{ anioActual }} Reserva Tickets · Versión 2.0 Angular
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Diálogo Modal PrimeNG para Recuperación de Contraseña -->
+<p-dialog 
+    header="Recuperación de Acceso" 
+    [(visible)]="mostrarDialogoRecuperarVisibilidad" 
+    [modal]="true" 
+    [closable]="true" 
+    [draggable]="false" 
+    [resizable]="false" 
+    styleClass="w-11/12 max-w-md rounded-2xl"
+>
+    <div class="flex flex-col gap-3 py-2">
+        <div class="flex items-center gap-3 text-primary">
+            <i class="pi pi-info-circle text-3xl"></i>
+            <span class="font-semibold text-lg text-surface-900 dark:text-surface-0">Restablecimiento de Credenciales</span>
+        </div>
+        <p class="text-sm text-surface-600 dark:text-surface-300 leading-relaxed">
+            Por motivos de seguridad, el restablecimiento de contraseñas es gestionado directamente por los 
+            <strong>Administradores del Sistema</strong> desde el módulo de usuarios.
+        </p>
+        <div class="bg-surface-100 dark:bg-surface-800 p-3 rounded-xl text-xs text-muted-color">
+            Si eres operador, comunícate con el administrador general de tu evento para que genere un enlace seguro o restablezca tu acceso.
+        </div>
+    </div>
+    <ng-template pTemplate="footer">
+        <p-button 
+            label="Entendido" 
+            icon="pi pi-check" 
+            [rounded]="true" 
+            (click)="mostrarDialogoRecuperar.set(false)" 
+        />
+    </ng-template>
+</p-dialog>

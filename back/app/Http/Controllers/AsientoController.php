@@ -12,7 +12,7 @@ class AsientoController extends Controller
     // PATCH /mis-graderias/{graderia}/asientos/{asiento}
     public function updateOne(Request $request, Graderia $graderia, Asiento $asiento)
     {
-        if ((int)$graderia->user_id !== (int)$request->user()->id) {
+        if (!$request->user()->esAdmin() && (int)$graderia->user_id !== (int)$request->user()->id) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 
@@ -92,7 +92,7 @@ class AsientoController extends Controller
     // POST /mis-graderias/{graderia}/asientos/bulk
     public function bulkUpdate(Request $request, Graderia $graderia)
     {
-        if ((int)$graderia->user_id !== (int)$request->user()->id) {
+        if (!$request->user()->esAdmin() && (int)$graderia->user_id !== (int)$request->user()->id) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 

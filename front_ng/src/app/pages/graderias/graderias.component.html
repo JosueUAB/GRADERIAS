@@ -1,0 +1,23 @@
+<div class="flex flex-col gap-6">
+    <!-- Componente Especializado: Listado y KPIs -->
+    <app-graderia-lista
+        (crear)="abrirCrear()"
+        (editar)="abrirEditar($event)"
+        (verDetalle)="abrirDetalle($event)"
+    />
+
+    <!-- Componente Especializado: Formulario Crear / Editar (Modal) -->
+    <app-graderia-form
+        [visible]="modalFormVisible()"
+        (visibleChange)="onFormVisibleChange($event)"
+        [graderia]="graderiaSeleccionada()"
+        (guardado)="onGuardadoExitoso($event)"
+    />
+
+    <!-- Componente Especializado: Detalle con Asientos Reales (Modal) -->
+    <app-graderia-detalle
+        [visible]="modalDetalleVisible()"
+        (visibleChange)="modalDetalleVisible.set($event)"
+        [graderia]="graderiaSeleccionada()"
+    />
+</div>

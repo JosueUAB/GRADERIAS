@@ -37,4 +37,14 @@ class User extends Authenticatable implements AuditableContract
             'password' => 'hashed',
         ];
     }
+
+    public function esAdmin(): bool
+    {
+        return strtolower((string)$this->role) === 'administrador' || $this->hasRole('Administrador') || $this->can('Usuarios');
+    }
+
+    public function graderias()
+    {
+        return $this->hasMany(Graderia::class, 'user_id');
+    }
 }

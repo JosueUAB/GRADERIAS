@@ -1,0 +1,100 @@
+<div class="layout-topbar">
+    <!-- Logo & Botón Colapsar Menú Lateral -->
+    <div class="layout-topbar-logo-container">
+        <button
+            type="button"
+            class="layout-menu-button layout-topbar-action"
+            (click)="layoutService.onMenuToggle()"
+            title="Alternar Menú"
+        >
+            <i class="pi pi-bars"></i>
+        </button>
+        <a class="layout-topbar-logo flex items-center gap-2" routerLink="/">
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-xs">
+                <i class="pi pi-ticket text-xl"></i>
+            </div>
+            <span class="font-bold text-lg tracking-tight text-surface-900 dark:text-surface-0">
+                RESERVA TICKETS
+            </span>
+        </a>
+    </div>
+
+    <!-- Acciones Superiores Derecha -->
+    <div class="layout-topbar-actions flex items-center gap-2 sm:gap-3">
+        <!-- Selector Modo Oscuro / Modo Claro -->
+        <button
+            type="button"
+            class="layout-topbar-action"
+            (click)="toggleDarkMode()"
+            [title]="layoutService.isDarkTheme() ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'"
+        >
+            <i [ngClass]="{ 'pi': true, 'pi-moon': layoutService.isDarkTheme(), 'pi-sun': !layoutService.isDarkTheme() }"></i>
+        </button>
+
+        <!-- Configurador de Paleta y Apariencia Sakai -->
+        <div class="relative">
+            <button
+                type="button"
+                class="layout-topbar-action layout-topbar-action-highlight"
+                pStyleClass="@next"
+                enterFromClass="hidden"
+                enterActiveClass="animate-scalein"
+                leaveToClass="hidden"
+                leaveActiveClass="animate-fadeout"
+                [hideOnOutsideClick]="true"
+                title="Configurar Paleta de Colores"
+            >
+                <i class="pi pi-palette"></i>
+            </button>
+            <app-configurator />
+        </div>
+
+        <!-- Perfil del Usuario Autenticado en Navbar -->
+        @if (authStore.estaAutenticado()) {
+            <div class="flex items-center gap-2.5 pl-3 border-l border-surface-200 dark:border-surface-800">
+                <!-- Avatar del Usuario con Estado y Enlace al Perfil -->
+                <a
+                    routerLink="/perfil/cambiar-contrasena"
+                    class="relative block rounded-full focus:outline-hidden hover:opacity-90 transition-opacity"
+                    pTooltip="Mi Perfil / Cambiar Contraseña"
+                    tooltipPosition="bottom"
+                >
+                    <img
+                        [src]="obtenerAvatar(authStore.usuario()?.avatar)"
+                        alt="Avatar"
+                        class="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-primary shadow-xs"
+                        (error)="$any($event.target).src = 'assets/layout/images/avatar.png'"
+                    />
+                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-surface-0 dark:border-surface-900 shadow-xs"></span>
+                </a>
+
+                <!-- Nombre y Rol (Visible en dispositivos medianos/grandes) -->
+                <div class="hidden sm:flex flex-col text-left">
+                    <span class="text-xs font-bold text-surface-900 dark:text-surface-0 leading-tight truncate max-w-[140px]">
+                        {{ authStore.nombreUsuario() }}
+                    </span>
+                    <div class="mt-0.5">
+                        <p-tag
+                            [value]="authStore.rol()"
+                            [severity]="authStore.esAdmin() ? 'danger' : 'secondary'"
+                            [rounded]="true"
+                            styleClass="text-[10px] py-0 px-1.5"
+                        />
+                    </div>
+                </div>
+
+                <!-- Botón de Cerrar Sesión -->
+                <p-button
+                    icon="pi pi-power-off"
+                    [rounded]="true"
+                    [text]="true"
+                    severity="danger"
+                    size="small"
+                    (click)="confirmarCerrarSesion()"
+                    pTooltip="Cerrar Sesión"
+                    tooltipPosition="bottom"
+                />
+            </div>
+        }
+    </div>
+</div>

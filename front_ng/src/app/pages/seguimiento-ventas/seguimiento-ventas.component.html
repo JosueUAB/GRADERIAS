@@ -1,0 +1,237 @@
+<div class="flex flex-col gap-6">
+    <!-- Encabezado de Página -->
+    <div class="card mb-0">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl flex items-center gap-3">
+                    <i class="pi pi-chart-line text-primary text-2xl!"></i>
+                    Seguimiento de Ventas por Usuario
+                </div>
+                <span class="text-muted-color block mt-1">
+                    Auditoría financiera, control de recaudación por operador y monitoreo de ocupación en tiempo real.
+                </span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <p-button
+                    label="Recargar"
+                    icon="pi pi-refresh"
+                    severity="secondary"
+                    [rounded]="true"
+                    [loading]="store.cargando()"
+                    (click)="recargar()"
+                />
+                <p-button
+                    label="Exportar Auditoría PDF"
+                    icon="pi pi-file-pdf"
+                    severity="danger"
+                    [rounded]="true"
+                    [disabled]="store.cargando() || !store.resumenGlobal()"
+                    (click)="exportarConsolidadoPdf()"
+                />
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 Tarjetas de Estadísticas (Estilo Sakai Nativo) -->
+    <div class="grid grid-cols-12 gap-6">
+        <!-- 1. Total Recaudado -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-4">
+                    <div>
+                        <span class="block text-muted-color font-medium mb-2">Total Recaudado</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            Bs. {{ formatMoney(store.totalRecaudadoGlobal()) }}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-emerald-100 dark:bg-emerald-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-dollar text-emerald-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ store.totalButacasVendidas() }} butacas </span>
+                    <span class="text-muted-color">cobradas</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Ocupación Global -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-2">
+                    <div>
+                        <span class="block text-muted-color font-medium mb-2">Ocupación Global</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            {{ store.totalButacasVendidas() }}
+                            <span class="text-sm font-normal text-muted-color">/ {{ store.totalCapacidad() }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-ticket text-blue-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div>
+                    <p-progressbar [value]="store.porcentajeOcupacion()" [showValue]="false" styleClass="h-2 mb-2" />
+                    <div class="flex justify-between text-xs font-semibold">
+                        <span class="text-muted-color">Aforo ocupado</span>
+                        <span class="text-primary">{{ store.porcentajeOcupacion() }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. En Reserva -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-4">
+                    <div>
+                        <span class="block text-muted-color font-medium mb-2">En Reserva</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            {{ store.totalButacasReservadas() }}
+                            <span class="text-sm font-normal text-muted-color">butacas</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-clock text-orange-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-orange-500 font-medium">Bs. {{ formatMoney(store.totalReservadoGlobal()) }} </span>
+                    <span class="text-muted-color">por cobrar</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Operadores Activos -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-4">
+                    <div>
+                        <span class="block text-muted-color font-medium mb-2">Operadores Activos</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            {{ store.totalOperadoresConVentas() }}
+                            <span class="text-sm font-normal text-muted-color">con ventas</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-users text-purple-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-primary font-medium">{{ store.resumenGlobal()?.total_graderias ?? 0 }} </span>
+                    <span class="text-muted-color">graderías en operación</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Filtros en Card Nativo de Sakai -->
+    <div class="card mb-0">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div class="font-semibold text-lg text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                <i class="pi pi-filter text-primary"></i>
+                Filtros de Búsqueda y Auditoría
+            </div>
+            @if (filtroGraderiaId || filtroEstado !== 'ALL' || filtroSearch || filtroFechaDesde || filtroFechaHasta) {
+                <p-button
+                    label="Limpiar Filtros"
+                    icon="pi pi-filter-slash"
+                    severity="secondary"
+                    [text]="true"
+                    (click)="onLimpiarFiltros()"
+                />
+            }
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+                <label class="block font-medium text-sm text-surface-900 dark:text-surface-0 mb-2">Gradería</label>
+                <p-select
+                    [options]="store.graderiasFiltro()"
+                    [(ngModel)]="filtroGraderiaId"
+                    optionLabel="nombre"
+                    optionValue="id"
+                    [showClear]="true"
+                    placeholder="Todas las Graderías"
+                    class="w-full"
+                    (onChange)="onFiltrar()"
+                />
+            </div>
+
+            <div>
+                <label class="block font-medium text-sm text-surface-900 dark:text-surface-0 mb-2">Estado de Butaca</label>
+                <p-select
+                    [options]="estadosOpciones"
+                    [(ngModel)]="filtroEstado"
+                    optionLabel="label"
+                    optionValue="value"
+                    class="w-full"
+                    (onChange)="onFiltrar()"
+                />
+            </div>
+
+            <div>
+                <label class="block font-medium text-sm text-surface-900 dark:text-surface-0 mb-2">Fecha Desde</label>
+                <input
+                    type="date"
+                    pInputText
+                    [(ngModel)]="filtroFechaDesde"
+                    (change)="onFiltrar()"
+                    class="w-full"
+                />
+            </div>
+
+            <div>
+                <label class="block font-medium text-sm text-surface-900 dark:text-surface-0 mb-2">Fecha Hasta</label>
+                <input
+                    type="date"
+                    pInputText
+                    [(ngModel)]="filtroFechaHasta"
+                    (change)="onFiltrar()"
+                    class="w-full"
+                />
+            </div>
+
+            <div>
+                <label class="block font-medium text-sm text-surface-900 dark:text-surface-0 mb-2">Buscar</label>
+                <p-iconfield class="w-full">
+                    <p-inputicon styleClass="pi pi-search" />
+                    <input
+                        pInputText
+                        type="text"
+                        [(ngModel)]="filtroSearch"
+                        (keyup.enter)="onFiltrar()"
+                        placeholder="Cliente, celular, asiento..."
+                        class="w-full"
+                    />
+                </p-iconfield>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selector de Vista con SelectButton de PrimeNG -->
+    <div class="flex items-center justify-between">
+        <p-selectbutton
+            [options]="vistasOpciones"
+            [ngModel]="vistaActiva()"
+            (ngModelChange)="vistaActiva.set($event)"
+            optionLabel="label"
+            optionValue="value"
+        >
+            <ng-template #item let-item>
+                <i [class]="item.icon + ' mr-2'"></i>
+                <span>{{ item.label }}</span>
+            </ng-template>
+        </p-selectbutton>
+    </div>
+
+    <!-- Componente de la Vista Activa -->
+    @if (vistaActiva() === 'operadores') {
+        <app-tabla-operadores />
+    } @else {
+        <app-tabla-auditoria-asientos />
+    }
+
+    <!-- Modal Detalle y Liquidación por Operador -->
+    <app-dialog-detalle-operador />
+</div>

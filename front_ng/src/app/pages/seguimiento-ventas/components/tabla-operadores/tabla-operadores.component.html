@@ -1,0 +1,175 @@
+<div class="card">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+            <div class="font-semibold text-xl text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                <i class="pi pi-users text-primary"></i>
+                Rendimiento por Operador / Cajero
+            </div>
+            <span class="text-muted-color text-sm">
+                Recaudación acumulada, graderías gestionadas y nivel de ocupación en tiempo real.
+            </span>
+        </div>
+        <p-tag [value]="store.usuarios().length + ' Operadores'" severity="info" [rounded]="true" />
+    </div>
+
+    <p-table
+        [value]="store.usuarios()"
+        [paginator]="true"
+        [rows]="8"
+        [rowsPerPageOptions]="[8, 16, 24]"
+        responsiveLayout="scroll"
+        styleClass="p-datatable-gridlines"
+    >
+        <ng-template #header>
+            <tr>
+                <th style="width: 3.5rem" class="text-center">#</th>
+                <th pSortableColumn="name">
+                    Operador / Cajero <p-sortIcon field="name" />
+                </th>
+                <th>Graderías a Cargo</th>
+                <th class="text-center" pSortableColumn="total_pagados" style="width: 11rem">
+                    Butacas Vendidas <p-sortIcon field="total_pagados" />
+                </th>
+                <th class="text-center" pSortableColumn="porcentaje_ocupacion" style="width: 10rem">
+                    Ocupación <p-sortIcon field="porcentaje_ocupacion" />
+                </th>
+                <th class="text-center" style="width: 10rem">Reservas</th>
+                <th class="text-right" pSortableColumn="total_recaudado" style="width: 12rem">
+                    Total Recaudado <p-sortIcon field="total_recaudado" />
+                </th>
+                <th class="text-center" style="width: 5rem">Acciones</th>
+            </tr>
+        </ng-template>
+
+        <ng-template #body let-u let-rowIndex="rowIndex">
+            <tr>
+                <!-- Ranking -->
+                <td class="text-center">
+                    @if (rowIndex === 0 && u.total_recaudado > 0) {
+                        <span title="Top 1 en Recaudación">🥇</span>
+                    } @else if (rowIndex === 1 && u.total_recaudado > 0) {
+                        <span title="Top 2 en Recaudación">🥈</span>
+                    } @else if (rowIndex === 2 && u.total_recaudado > 0) {
+                        <span title="Top 3 en Recaudación">🥉</span>
+                    } @else {
+                        <span class="text-muted-color font-medium">{{ rowIndex + 1 }}</span>
+                    }
+                </td>
+
+                <!-- Operador Info -->
+                <td>
+                    <div class="flex items-center gap-3">
+                        <img
+                            [src]="obtenerAvatar(u.avatar)"
+                            alt="Avatar"
+                            class="w-10 h-10 rounded-full object-cover shadow-sm shrink-0 border border-surface"
+                            (error)="$any($event.target).src = 'assets/layout/images/avatar.png'"
+                        />
+                        <div class="min-w-0">
+                            <div class="font-bold text-surface-900 dark:text-surface-0 truncate">
+                                {{ u.name }}
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-muted-color mt-0.5">
+                                <span>@{{ u.username }}</span>
+                                <span>•</span>
+                                <p-tag
+                                    [value]="u.role"
+                                    [severity]="u.role === 'Administrador' ? 'danger' : 'secondary'"
+                                    [rounded]="true"
+                                />
+                            </div>
+                            @if (u.telefono_contacto_1) {
+                                <div class="text-xs text-muted-color mt-1 flex items-center gap-1">
+                                    <i class="pi pi-phone text-xs"></i>
+                                    <span>{{ u.telefono_contacto_1 }}</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Graderías Asignadas -->
+                <td>
+                    <div class="flex flex-wrap gap-1 max-w-[280px]">
+                        @for (g of u.graderias; track g.id) {
+                            <p-tag
+                                [value]="g.nombre + ' (' + g.capacidad_total + ')'"
+                                severity="secondary"
+                                icon="pi pi-building"
+                            />
+                        } @empty {
+                            <span class="text-muted-color text-sm italic">Sin graderías asignadas</span>
+                        }
+                    </div>
+                </td>
+
+                <!-- Butacas Vendidas -->
+                <td class="text-center">
+                    <span class="font-bold text-surface-900 dark:text-surface-0 text-base">
+                        {{ u.total_pagados }}
+                    </span>
+                    <span class="text-muted-color"> / {{ u.total_asientos }}</span>
+                    @if (u.total_asientos > 0) {
+                        <div class="text-xs text-muted-color mt-0.5">
+                            {{ u.total_libres }} libres
+                        </div>
+                    }
+                </td>
+
+                <!-- Progreso Ocupación -->
+                <td class="text-center">
+                    <div class="w-28 mx-auto">
+                        <p-progressbar [value]="u.porcentaje_ocupacion" [showValue]="false" styleClass="h-2 mb-1" />
+                        <span class="text-xs font-semibold text-surface-900 dark:text-surface-0">
+                            {{ u.porcentaje_ocupacion }}%
+                        </span>
+                    </div>
+                </td>
+
+                <!-- Reservas -->
+                <td class="text-center">
+                    @if (u.total_reservados > 0) {
+                        <p-tag
+                            [value]="u.total_reservados + ' (Bs. ' + formatMoney(u.total_reservado_monto) + ')'"
+                            severity="warn"
+                        />
+                    } @else {
+                        <span class="text-muted-color">0</span>
+                    }
+                </td>
+
+                <!-- Total Recaudado -->
+                <td class="text-right">
+                    <div class="font-mono font-bold text-base text-emerald-600 dark:text-emerald-400">
+                        Bs. {{ formatMoney(u.total_recaudado) }}
+                    </div>
+                    @if (u.ultima_venta_at) {
+                        <div class="text-xs text-muted-color mt-0.5">
+                            Última: {{ u.ultima_venta_at | date:'dd/MM HH:mm' }}
+                        </div>
+                    }
+                </td>
+
+                <!-- Acciones -->
+                <td class="text-center">
+                    <p-button
+                        icon="pi pi-eye"
+                        [rounded]="true"
+                        [text]="true"
+                        pTooltip="Ver Auditoría y Butacas"
+                        (click)="verDetalle(u)"
+                    />
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template #emptymessage>
+            <tr>
+                <td colspan="8" class="text-center py-8 text-muted-color">
+                    <i class="pi pi-users text-3xl block mb-2 opacity-50"></i>
+                    No se encontraron operadores registrados.
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>

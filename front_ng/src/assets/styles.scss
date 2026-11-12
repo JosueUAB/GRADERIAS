@@ -1,0 +1,18 @@
+/* You can add global styles to this file, and also import other style files */
+@use 'primeicons/primeicons.css';
+@use '@/assets/layout/layout.scss';
+@use '@/assets/demo/demo.scss';
+
+/* ==========================================================================
+   Garantía Integral de Desplazamiento y Scroll Global
+   ========================================================================== */
+html {
+    overflow-y: scroll; /* Mantener la barra de scroll presente para evitar saltos de layout */
+    scrollbar-gutter: stable;
+}
+
+/* Evitar que clases residuales de PrimeNG o del layout bloqueen el scroll cuando no hay modales visibles */
+body.p-overflow-hidden:not(:has(.p-dialog-mask)):not(:has(.p-overlay-mask)):not(:has(.p-sidebar-mask)),
+body.blocked-scroll:not(:has(.layout-mobile-active)) {
+    overflow: auto !important;
+}
