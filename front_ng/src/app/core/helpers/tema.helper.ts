@@ -197,20 +197,21 @@ export function generarPaletaSurfaceDesdeHex(baseHex: string): PaletaSurface {
     const luminance = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
 
     if (luminance < 128) {
-        // Hexadecimal oscuro (destinado al modo oscuro, como fondo/tarjetas)
-        // IMPORTANTE: Los tonos 0 a 400 se preservan en escala clara de alto contraste (blanco/plata)
-        // para garantizar que los textos, subtítulos y badges NUNCA se vuelvan rojos ilegibles.
+        // Hexadecimal oscuro (destinado como superficie para tarjetas/fondos oscuros)
+        // 0 a 300: tonos claros para fondos y bordes en modo claro
+        // 400 a 700: tonos intermedios y de contraste nítido (NUNCA mezclar 700 con blanco para evitar textos plomos)
+        // 800 a 950: superficies oscuras para modo oscuro
         return {
             0: '#ffffff',
-            50: '#ffffff',
-            100: '#f8fafc',
-            200: '#f1f5f9',
-            300: '#e2e8f0',
-            400: '#cbd5e1', // Texto atenuado de alto contraste
-            500: '#94a3b8', // Iconos neutros
-            600: mezclarColores(rgb, blanco, 0.28), // Borde resaltado
-            700: mezclarColores(rgb, blanco, 0.15), // Borde/separador
-            800: cleanHex, // Tono exacto para cards en modo oscuro
+            50: '#f8fafc',
+            100: '#f1f5f9',
+            200: '#e2e8f0',
+            300: '#cbd5e1',
+            400: '#94a3b8',
+            500: '#64748b',
+            600: mezclarColores(rgb, blanco, 0.40),
+            700: mezclarColores(rgb, blanco, 0.15),
+            800: cleanHex, // Tono para cards en modo oscuro
             900: mezclarColores(rgb, negro, 0.70), // Fondo general / sidebars
             950: mezclarColores(rgb, negro, 0.45)  // Fondo profundo
         };
@@ -225,10 +226,10 @@ export function generarPaletaSurfaceDesdeHex(baseHex: string): PaletaSurface {
             400: mezclarColores(rgb, negro, 0.55),
             500: mezclarColores(rgb, negro, 0.40),
             600: mezclarColores(rgb, negro, 0.30),
-            700: mezclarColores(rgb, negro, 0.22),
-            800: mezclarColores(rgb, negro, 0.15),
-            900: mezclarColores(rgb, negro, 0.08),
-            950: mezclarColores(rgb, negro, 0.03)
+            700: mezclarColores(rgb, negro, 0.20),
+            800: mezclarColores(rgb, negro, 0.12),
+            900: mezclarColores(rgb, negro, 0.06),
+            950: mezclarColores(rgb, negro, 0.02)
         };
     }
 }
@@ -243,6 +244,14 @@ export function obtenerPaletaSurface(valor?: string | null): PaletaSurface {
     const limpio = valor.trim().toLowerCase();
     if (PALETAS_SURFACE[limpio]) {
         return PALETAS_SURFACE[limpio];
+    }
+
+    if (limpio === '#1e293b' || limpio === '1e293b') {
+        return PALETAS_SURFACE['slate'];
+    }
+
+    if (limpio === '#28050c' || limpio === '28050c') {
+        return PALETAS_SURFACE['carmesi'];
     }
 
     if (/^#?[0-9a-f]{3,8}$/i.test(limpio)) {
@@ -275,6 +284,17 @@ export function construirPresetExt(palette: PaletaShades, primaryDarkHex?: strin
                     focusBackground: '{primary.100}',
                     color: '{primary.700}',
                     focusColor: '{primary.800}'
+                },
+                text: {
+                    color: '#09090b',         // Negro profundo nítido en modo claro (elimina texto plomo en Lara y Aura)
+                    hoverColor: '#000000',
+                    mutedColor: '#475569',    // Gris pizarra legible con alto contraste
+                    hoverMutedColor: '#1e293b'
+                },
+                formField: {
+                    color: '#09090b',         // Letras negras en todos los campos de formulario e inputs
+                    disabledColor: '#64748b',
+                    placeholderColor: '#64748b'
                 }
             },
             dark: {
@@ -293,6 +313,17 @@ export function construirPresetExt(palette: PaletaShades, primaryDarkHex?: strin
                         : 'color-mix(in srgb, {primary.400}, transparent 76%)',
                     color: 'rgba(255,255,255,.87)',
                     focusColor: 'rgba(255,255,255,.87)'
+                },
+                text: {
+                    color: '#f8fafc',         // Blanco nítido de alto contraste
+                    hoverColor: '#ffffff',
+                    mutedColor: '#cbd5e1',    // Plata de alto contraste
+                    hoverMutedColor: '#ffffff'
+                },
+                formField: {
+                    color: '#f8fafc',
+                    disabledColor: '#64748b',
+                    placeholderColor: '#94a3b8'
                 }
             }
         }

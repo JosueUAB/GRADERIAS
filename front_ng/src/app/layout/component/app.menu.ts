@@ -59,9 +59,9 @@ export class AppMenu {
             if (esAdmin || tienePermisoUsuarios) {
                 adminItems.push({ label: 'Gestión de Usuarios', icon: 'pi pi-fw pi-users', routerLink: ['/usuarios'] });
             }
-            if (esAdmin) {
-                adminItems.push({ label: 'Personalización de Tema', icon: 'pi pi-fw pi-palette', routerLink: ['/personalizacion'] });
-            }
+            // if (esAdmin) {
+            //     adminItems.push({ label: 'Personalización de Tema', icon: 'pi pi-fw pi-palette', routerLink: ['/personalizacion'] });
+            // }
 
             if (adminItems.length > 0) {
                 menu.push({

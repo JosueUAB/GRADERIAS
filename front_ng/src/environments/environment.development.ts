@@ -6,8 +6,9 @@ export const environment = {
     version: '2.0.0-dev',
 
     // Configuración de Personalización Visual (Personalizable libremente)
+    defaultPreset: 'Lara',       // Preset PrimeNG: 'Lara' | 'Aura' | 'Nora'
     primaryColor: '#960023',     // Color primario por defecto (Carmesí / Garnet Red)
     primaryDarkColor: '#c81e3d', // Color primario para modo oscuro (evita que los botones se pierdan)
-    surfaceColor: '#1e293b',     // Color hexadecimal de la superficie (o nombre 'slate', 'zinc', etc.)
-    defaultPreset: 'Lara'        // Preset PrimeNG: 'Lara' | 'Aura' | 'Nora'
+    surfaceColor: 'slate',       // Superficie: 'slate' | 'zinc' | 'gray' | 'neutral' | 'stone' | 'carmesi' | 'guindo'
+    defaultDarkTheme: false      // Modo inicial: false = Claro (fondo blanco, letras negras nítidas), true = Oscuro
 };

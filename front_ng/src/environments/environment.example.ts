@@ -6,8 +6,9 @@ export const environment = {
     version: '2.0.0',
 
     // Configuración de Personalización Visual (Personalizable libremente)
+    defaultPreset: 'Lara',
     primaryColor: '#960023',
     primaryDarkColor: '#c81e3d',
-    surfaceColor: '#1e293b',
-    defaultPreset: 'Lara'
+    surfaceColor: 'slate',
+    defaultDarkTheme: false
 };

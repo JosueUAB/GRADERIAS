@@ -4,7 +4,7 @@
     <div class="w-full max-w-md">
         <!-- Tarjeta Principal con Estilo PrimeNG y Bordes Redondeados -->
         <div class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-3xl p-8 shadow-xl transition-all duration-300">
-            
+
             <!-- Header con Botón de Modo Oscuro/Claro y Marca -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center gap-3">
@@ -12,16 +12,16 @@
                         <i class="pi pi-ticket text-2xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-surface-900 dark:text-surface-0 leading-tight">Reserva Tickets</h1>
+                        <h1 class="text-xl font-bold text-surface-900 dark:text-surface-0 leading-tight">Butacas</h1>
                         <span class="text-xs text-muted-color">Sistema de Gestión de Graderías</span>
                     </div>
                 </div>
 
                 <!-- Switch Rápido Modo Claro / Oscuro -->
-                <p-button 
-                    [icon]="layoutService.isDarkTheme() ? 'pi pi-sun' : 'pi pi-moon'" 
-                    [rounded]="true" 
-                    [text]="true" 
+                <p-button
+                    [icon]="layoutService.isDarkTheme() ? 'pi pi-sun' : 'pi pi-moon'"
+                    [rounded]="true"
+                    [text]="true"
                     severity="secondary"
                     (click)="toggleTema()"
                     [pTooltip]="layoutService.isDarkTheme() ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'"
@@ -48,14 +48,14 @@
                     </label>
                     <span class="p-input-icon-left w-full">
                         <i class="pi pi-user text-muted-color ml-3"></i>
-                        <input 
-                            pInputText 
-                            id="username" 
-                            name="username" 
-                            type="text" 
-                            [(ngModel)]="username" 
-                            required 
-                            placeholder="Ej. admin" 
+                        <input
+                            pInputText
+                            id="username"
+                            name="username"
+                            type="text"
+                            [(ngModel)]="username"
+                            required
+                            placeholder="Ej. admin"
                             class="w-full pl-10 rounded-xl"
                             [disabled]="authStore.cargando()"
                         />
@@ -67,13 +67,13 @@
                     <label for="password" class="text-sm font-medium text-surface-700 dark:text-surface-200">
                         Contraseña
                     </label>
-                    <p-password 
-                        id="password" 
-                        name="password" 
-                        [(ngModel)]="password" 
-                        [toggleMask]="true" 
-                        [feedback]="false" 
-                        [fluid]="true" 
+                    <p-password
+                        id="password"
+                        name="password"
+                        [(ngModel)]="password"
+                        [toggleMask]="true"
+                        [feedback]="false"
+                        [fluid]="true"
                         required
                         placeholder="Ingresa tu contraseña"
                         inputStyleClass="w-full rounded-xl"
@@ -84,18 +84,18 @@
                 <!-- Opciones: Recordarme y Olvidé Contraseña -->
                 <div class="flex items-center justify-between mt-1 text-sm">
                     <div class="flex items-center gap-2">
-                        <p-checkbox 
-                            [(ngModel)]="rememberMe" 
-                            name="rememberMe" 
-                            [binary]="true" 
-                            inputId="remember" 
+                        <p-checkbox
+                            [(ngModel)]="rememberMe"
+                            name="rememberMe"
+                            [binary]="true"
+                            inputId="remember"
                         />
                         <label for="remember" class="text-surface-600 dark:text-surface-400 cursor-pointer select-none">
                             Recordarme
                         </label>
                     </div>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         class="text-primary hover:underline font-medium text-sm border-none bg-transparent cursor-pointer p-0"
                         (click)="mostrarDialogoRecuperar.set(true)"
                     >
@@ -104,12 +104,12 @@
                 </div>
 
                 <!-- Botón de Envío con Estilo Rounded PrimeNG -->
-                <p-button 
-                    type="submit" 
-                    label="Ingresar al Sistema" 
+                <p-button
+                    type="submit"
+                    label="Ingresar al Sistema"
                     icon="pi pi-sign-in"
-                    [rounded]="true" 
-                    [fluid]="true" 
+                    [rounded]="true"
+                    [fluid]="true"
                     [loading]="authStore.cargando()"
                     [disabled]="!username || !password || authStore.cargando()"
                     styleClass="mt-2 py-3 font-semibold shadow-md"
@@ -120,20 +120,20 @@
 
             <!-- Pie de Tarjeta -->
             <div class="mt-6 text-center text-xs text-muted-color">
-                © {{ anioActual }} Reserva Tickets · Versión 2.0 Angular
+                © {{ anioActual }} Reserva Tickets · Versión 1.0.0 Angular
             </div>
         </div>
     </div>
 </div>
 
 <!-- Diálogo Modal PrimeNG para Recuperación de Contraseña -->
-<p-dialog 
-    header="Recuperación de Acceso" 
-    [(visible)]="mostrarDialogoRecuperarVisibilidad" 
-    [modal]="true" 
-    [closable]="true" 
-    [draggable]="false" 
-    [resizable]="false" 
+<p-dialog
+    header="Recuperación de Acceso"
+    [(visible)]="mostrarDialogoRecuperarVisibilidad"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
     styleClass="w-11/12 max-w-md rounded-2xl"
 >
     <div class="flex flex-col gap-3 py-2">
@@ -142,7 +142,7 @@
             <span class="font-semibold text-lg text-surface-900 dark:text-surface-0">Restablecimiento de Credenciales</span>
         </div>
         <p class="text-sm text-surface-600 dark:text-surface-300 leading-relaxed">
-            Por motivos de seguridad, el restablecimiento de contraseñas es gestionado directamente por los 
+            Por motivos de seguridad, el restablecimiento de contraseñas es gestionado directamente por los
             <strong>Administradores del Sistema</strong> desde el módulo de usuarios.
         </p>
         <div class="bg-surface-100 dark:bg-surface-800 p-3 rounded-xl text-xs text-muted-color">
@@ -150,11 +150,11 @@
         </div>
     </div>
     <ng-template pTemplate="footer">
-        <p-button 
-            label="Entendido" 
-            icon="pi pi-check" 
-            [rounded]="true" 
-            (click)="mostrarDialogoRecuperar.set(false)" 
+        <p-button
+            label="Entendido"
+            icon="pi pi-check"
+            [rounded]="true"
+            (click)="mostrarDialogoRecuperar.set(false)"
         />
     </ng-template>
 </p-dialog>

@@ -19,18 +19,97 @@ body.blocked-scroll:not(:has(.layout-mobile-active)) {
 }
 
 /* ==========================================================================
+   Garantía de Alto Contraste y Tipografía Nítida en Modo Claro (Negro Puro)
+   Elimina letras plomas / descoloridas en ambos temas (Lara y Aura)
+   ========================================================================== */
+:root:not(.app-dark) {
+    --p-text-color: #09090b;
+    --p-text-muted-color: #475569;
+    --text-color: #09090b;
+    --text-color-secondary: #475569;
+
+    body {
+        color: #09090b;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        color: #09090b;
+    }
+
+    /* Corrección de clases de superficie en modo claro para que el texto sea negro nítido */
+    .text-surface-900,
+    .text-surface-800,
+    .text-surface-700 {
+        color: #09090b !important;
+    }
+
+    .text-surface-600 {
+        color: #1e293b !important;
+    }
+
+    .text-surface-500,
+    .text-muted-color {
+        color: #475569 !important;
+    }
+
+    /* Formularios, Inputs y Selects */
+    .p-inputtext,
+    .p-select,
+    .p-select-label,
+    .p-multiselect,
+    .p-multiselect-label,
+    .p-textarea,
+    .p-inputnumber-input {
+        color: #09090b !important;
+        font-weight: 500;
+
+        &::placeholder {
+            color: #64748b !important;
+        }
+    }
+
+    /* Tablas PrimeNG */
+    .p-datatable {
+        .p-datatable-header,
+        .p-datatable-thead > tr > th,
+        .p-datatable-tbody > tr > td {
+            color: #09090b !important;
+        }
+    }
+
+    /* Diálogos y Modales */
+    .p-dialog .p-dialog-title,
+    .p-dialog .p-dialog-content {
+        color: #09090b !important;
+    }
+}
+
+/* ==========================================================================
    Garantía de Alto Contraste en Modo Oscuro y Fondos Carmesí / Tintados
    ========================================================================== */
 .app-dark {
     /* Texto principal y secundario nítido, sin tintes rojizos que reduzcan contraste */
     --p-text-color: #f8fafc;
     --p-text-muted-color: #cbd5e1;
+    --text-color: #f8fafc;
+    --text-color-secondary: #cbd5e1;
+
+    body {
+        color: #f8fafc;
+    }
 
     /* Asegurar que las etiquetas y textos secundarios no se pierdan */
     .text-muted-color,
     .text-surface-500,
     .text-surface-400 {
         color: #cbd5e1 !important;
+    }
+
+    .text-surface-900,
+    .text-surface-800,
+    .text-surface-700,
+    .text-surface-600 {
+        color: #f8fafc !important;
     }
 
     /* Bordes sutiles pero visibles sobre fondos oscuros o carmesí */

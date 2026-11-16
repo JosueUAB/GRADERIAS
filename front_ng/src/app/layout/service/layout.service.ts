@@ -37,18 +37,19 @@ const PRESETS: Record<string, any> = {
 };
 
 const THEME_STORAGE_KEY = 'themeConfigTicket';
+const THEME_ENV_SIG_KEY = 'themeEnvSignatureTicket';
 
 @Injectable({
     providedIn: 'root'
 })
 export class LayoutService {
-    // Configuración inicial basada en variables de entorno
+    // Configuración inicial basada en variables de entorno de Angular
     private readonly configPorDefecto: LayoutConfig = {
         preset: environment.defaultPreset || 'Lara',
         primary: environment.primaryColor || '#960023',
         primaryDark: (environment as any).primaryDarkColor || undefined,
-        surface: (environment as any).surfaceColor || '#1e293b',
-        darkTheme: false,
+        surface: (environment as any).surfaceColor || 'slate',
+        darkTheme: (environment as any).defaultDarkTheme ?? false,
         menuMode: 'static'
     };
 
@@ -101,10 +102,24 @@ export class LayoutService {
 
     private obtenerConfiguracionInicial(): LayoutConfig {
         if (typeof window !== 'undefined') {
+            const currentEnvSig = `${environment.defaultPreset || 'Lara'}_${environment.primaryColor || '#960023'}_${(environment as any).surfaceColor || 'slate'}_${(environment as any).defaultDarkTheme ?? false}`;
+            const savedEnvSig = localStorage.getItem(THEME_ENV_SIG_KEY);
+
+            // Si cambiaron las variables de entorno de Angular, aplicamos prioritariamente la configuración nueva
+            if (savedEnvSig !== currentEnvSig) {
+                localStorage.setItem(THEME_ENV_SIG_KEY, currentEnvSig);
+                const nueva = { ...this.configPorDefecto };
+                localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(nueva));
+                return nueva;
+            }
+
             const guardado = localStorage.getItem(THEME_STORAGE_KEY);
             if (guardado) {
                 try {
                     const parsed = JSON.parse(guardado);
+                    if (parsed.surface === '#1e293b') {
+                        parsed.surface = 'slate';
+                    }
                     return {
                         ...this.configPorDefecto,
                         ...parsed
@@ -127,7 +142,10 @@ export class LayoutService {
         const presetObj = PRESETS[c.preset] || PRESETS['Lara'];
         const primaryHex = c.primary || environment.primaryColor || '#960023';
         const primaryDarkHex = c.primaryDark || (environment as any).primaryDarkColor || undefined;
-        const surfaceVal = c.surface || (environment as any).surfaceColor || '#1e293b';
+        let surfaceVal = c.surface || (environment as any).surfaceColor || 'slate';
+        if (surfaceVal === '#1e293b') {
+            surfaceVal = 'slate';
+        }
 
         const paletaPrimaria = generarPaletaDesdeHex(primaryHex);
         const presetExt = construirPresetExt(paletaPrimaria, primaryDarkHex);
