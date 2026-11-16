@@ -82,9 +82,37 @@ export function generarPaletaDesdeHex(baseHex: string): PaletaShades {
 }
 
 /**
- * Catálogo de superficies PrimeNG (con 'slate' como la predeterminada del sistema)
+ * Catálogo de superficies PrimeNG (incluyendo Carmesí y Guindo Oruro de Alto Contraste)
  */
 export const PALETAS_SURFACE: Record<string, PaletaSurface> = {
+    carmesi: {
+        0: '#ffffff',
+        50: '#ffffff',
+        100: '#fdf2f4',
+        200: '#f8fafc',
+        300: '#e2e8f0',
+        400: '#cbd5e1', // Texto atenuado de alto contraste (plata)
+        500: '#94a3b8', // Iconos neutros
+        600: '#5c131d', // Borde sutil
+        700: '#420c14', // Borde/divisor
+        800: '#28050c', // Tarjetas en modo oscuro
+        900: '#1b0307', // Sidebar / navbar
+        950: '#120104'  // Fondo de página profundo
+    },
+    guindo: {
+        0: '#ffffff',
+        50: '#ffffff',
+        100: '#fff1f2',
+        200: '#f8fafc',
+        300: '#e2e8f0',
+        400: '#cbd5e1',
+        500: '#94a3b8',
+        600: '#530b1b',
+        700: '#3d0713',
+        800: '#26040b',
+        900: '#190207',
+        950: '#100104'
+    },
     slate: {
         0: '#ffffff',
         50: '#f8fafc',
@@ -170,18 +198,20 @@ export function generarPaletaSurfaceDesdeHex(baseHex: string): PaletaSurface {
 
     if (luminance < 128) {
         // Hexadecimal oscuro (destinado al modo oscuro, como fondo/tarjetas)
+        // IMPORTANTE: Los tonos 0 a 400 se preservan en escala clara de alto contraste (blanco/plata)
+        // para garantizar que los textos, subtítulos y badges NUNCA se vuelvan rojos ilegibles.
         return {
             0: '#ffffff',
-            50: mezclarColores(rgb, blanco, 0.04),
-            100: mezclarColores(rgb, blanco, 0.10),
-            200: mezclarColores(rgb, blanco, 0.20),
-            300: mezclarColores(rgb, blanco, 0.35),
-            400: mezclarColores(rgb, blanco, 0.55),
-            500: mezclarColores(rgb, blanco, 0.72),
-            600: mezclarColores(rgb, blanco, 0.86),
-            700: mezclarColores(rgb, blanco, 0.94),
+            50: '#ffffff',
+            100: '#f8fafc',
+            200: '#f1f5f9',
+            300: '#e2e8f0',
+            400: '#cbd5e1', // Texto atenuado de alto contraste
+            500: '#94a3b8', // Iconos neutros
+            600: mezclarColores(rgb, blanco, 0.28), // Borde resaltado
+            700: mezclarColores(rgb, blanco, 0.15), // Borde/separador
             800: cleanHex, // Tono exacto para cards en modo oscuro
-            900: mezclarColores(rgb, negro, 0.70), // Fondo general en modo oscuro
+            900: mezclarColores(rgb, negro, 0.70), // Fondo general / sidebars
             950: mezclarColores(rgb, negro, 0.45)  // Fondo profundo
         };
     } else {

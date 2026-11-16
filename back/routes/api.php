@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Seguimiento y auditoría de ventas por usuario y gradería
     Route::get('/ventas/seguimiento', [\App\Http\Controllers\ReporteVentasController::class, 'seguimiento']);
+    Route::get('/ventas/reporte-diario', [\App\Http\Controllers\ReporteVentasController::class, 'reporteDiario']);
     Route::get('/ventas/usuario/{user}', [\App\Http\Controllers\ReporteVentasController::class, 'detalleUsuario']);
 
 

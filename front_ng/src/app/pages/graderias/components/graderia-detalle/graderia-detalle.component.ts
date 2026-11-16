@@ -1,15 +1,19 @@
-import { Component, computed, EventEmitter, inject, input, OnChanges, Output, signal, SimpleChanges } from '@angular/core';
+import { Component, computed, ElementRef, EventEmitter, inject, input, OnChanges, OnDestroy, Output, signal, SimpleChanges, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import * as maplibregl from 'maplibre-gl';
 import { Graderia } from '@/app/core/interfaces/graderia.interface';
 import { Asiento } from '@/app/core/interfaces/asiento.interface';
 import { GraderiaService } from '@/app/core/services/graderia.service';
 import { GraderiaStore } from '@/app/core/store/graderia.store';
 import { NotificacionService } from '@/app/core/services/notificacion.service';
+import { LayoutService } from '@/app/layout/service/layout.service';
+import { configurarMapLibreWorker, resolverEstiloMapa } from '@/app/core/helpers/maplibre.helper';
+import { MapaCoordenadasDialogComponent } from '../mapa-coordenadas-dialog/mapa-coordenadas-dialog.component';
 
 interface CeldaMatriz {
     r: number;
@@ -27,13 +31,25 @@ interface FilaMatriz {
 @Component({
     selector: 'app-graderia-detalle',
     standalone: true,
-    imports: [CommonModule, RouterModule, DialogModule, ButtonModule, TagModule, TooltipModule],
+    imports: [
+        CommonModule,
+        RouterModule,
+        DialogModule,
+        ButtonModule,
+        TagModule,
+        TooltipModule,
+        MapaCoordenadasDialogComponent
+    ],
     templateUrl: './graderia-detalle.component.html'
 })
-export class GraderiaDetalleComponent implements OnChanges {
+export class GraderiaDetalleComponent implements OnChanges, OnDestroy {
     private graderiaService = inject(GraderiaService);
+    private layoutService = inject(LayoutService);
+    private router = inject(Router);
     store = inject(GraderiaStore);
     notificacion = inject(NotificacionService);
+
+    @ViewChild('miniMapContainer') miniMapContainer?: ElementRef<HTMLDivElement>;
 
     visible = input<boolean>(false);
     graderia = input<Graderia | null>(null);
@@ -43,6 +59,10 @@ export class GraderiaDetalleComponent implements OnChanges {
     asientos = signal<Asiento[]>([]);
     cargandoAsientos = signal<boolean>(false);
     reparando = signal<boolean>(false);
+    modalCoordenadasVisible = signal<boolean>(false);
+
+    private miniMap: maplibregl.Map | null = null;
+    private miniMarker: maplibregl.Marker | null = null;
 
     get visibleModel(): boolean {
         return this.visible();
@@ -105,6 +125,91 @@ export class GraderiaDetalleComponent implements OnChanges {
     ngOnChanges(changes: SimpleChanges) {
         if (this.visible() && this.graderia() && (changes['visible'] || changes['graderia'])) {
             this.cargarAsientosReales();
+            setTimeout(() => this.inicializarMiniMapa(), 200);
+        }
+    }
+
+    onDialogShow(): void {
+        this.cargarAsientosReales();
+        setTimeout(() => this.inicializarMiniMapa(), 200);
+    }
+
+    inicializarMiniMapa(): void {
+        const g = this.graderia();
+        if (!this.miniMapContainer?.nativeElement || !g || g.latitud == null || g.longitud == null) return;
+
+        configurarMapLibreWorker();
+
+        if (this.miniMap) {
+            this.miniMap.remove();
+            this.miniMap = null;
+            this.miniMarker = null;
+        }
+
+        const lat = Number(g.latitud);
+        const lng = Number(g.longitud);
+
+        const isDark = this.layoutService.isDarkTheme();
+
+        this.miniMap = new maplibregl.Map({
+            container: this.miniMapContainer.nativeElement,
+            style: resolverEstiloMapa(isDark),
+            center: [lng, lat],
+            zoom: 16.5,
+            pitch: 0
+        });
+
+        this.miniMap.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
+
+        const el = document.createElement('div');
+        el.innerHTML = `
+            <div style="background: #960023; color: white; border-radius: 9999px; padding: 4px 9px; font-size: 11px; font-weight: bold; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 4px;">
+                <i class="pi pi-map-marker" style="font-size: 11px;"></i>
+                <span>${g.nombre}</span>
+            </div>
+        `;
+
+        this.miniMarker = new maplibregl.Marker({ element: el })
+            .setLngLat([lng, lat])
+            .addTo(this.miniMap);
+    }
+
+    guardarNuevasCoordenadas(coords: { latitud: number; longitud: number }): void {
+        const g = this.graderia();
+        if (!g) return;
+
+        this.store.actualizar(
+            g.id,
+            {
+                nombre: g.nombre || 'Gradería',
+                direccion: g.direccion || undefined,
+                latitud: coords.latitud,
+                longitud: coords.longitud,
+                filas: Number(g.filas),
+                columnas: Number(g.columnas),
+                etiqueta_modo: g.etiqueta_modo || 'fila',
+                start_top: !!g.start_top,
+                start_left: !!g.start_left,
+                activo: !!g.activo
+            },
+            (actualizada) => {
+                this.notificacion.exito(`Ubicación de "${actualizada.nombre}" guardada en el mapa.`);
+                setTimeout(() => this.inicializarMiniMapa(), 150);
+            },
+            (err) => this.notificacion.error(err)
+        );
+    }
+
+    irAlMapa(): void {
+        this.cerrar();
+        this.router.navigate(['/graderias/mapa']);
+    }
+
+    ngOnDestroy(): void {
+        if (this.miniMap) {
+            this.miniMap.remove();
+            this.miniMap = null;
+            this.miniMarker = null;
         }
     }
 

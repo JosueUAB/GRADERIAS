@@ -14,11 +14,23 @@ class Graderia extends Model implements AuditableContract
 
     protected $fillable = [
         'nombre','codigo','code',
-        'direccion','ref_izquierda','ref_derecha','ref_frente',
+        'direccion','latitud','longitud',
+        'ref_izquierda','ref_derecha','ref_frente',
         'filas','columnas','capacidad_total',
         'etiqueta_modo','start_top','start_left',
         'user_id',
         'activo',
+    ];
+
+    protected $casts = [
+        'latitud' => 'float',
+        'longitud' => 'float',
+        'filas' => 'integer',
+        'columnas' => 'integer',
+        'capacidad_total' => 'integer',
+        'start_top' => 'boolean',
+        'start_left' => 'boolean',
+        'activo' => 'boolean',
     ];
 
     public function asientos()

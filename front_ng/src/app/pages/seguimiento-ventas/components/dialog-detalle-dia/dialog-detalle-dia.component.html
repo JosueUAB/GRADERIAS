@@ -1,0 +1,171 @@
+<p-dialog
+    [visible]="store.dialogDiaDetalleVisible()"
+    (visibleChange)="cerrar()"
+    [modal]="true"
+    [maximizable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '90vw', maxWidth: '1100px' }"
+    styleClass="p-dialog-modern"
+>
+    <!-- Encabezado del Diálogo -->
+    <ng-template #header>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center bg-primary-100 dark:bg-primary-400/10 rounded-border p-2">
+                <i class="pi pi-calendar-clock text-primary text-2xl!"></i>
+            </div>
+            <div>
+                <div class="text-surface-900 dark:text-surface-0 font-bold text-xl capitalize">
+                    {{ formatearFechaLarga(store.diaDetalleSeleccionado()?.fecha) }}
+                </div>
+                <div class="text-muted-color text-sm flex items-center gap-2 mt-0.5">
+                    <span>Fecha: <strong class="text-surface-800 dark:text-surface-200">{{ store.diaDetalleSeleccionado()?.fecha }}</strong></span>
+                    <span>•</span>
+                    <span>Total Butacas: <strong class="text-primary">{{ store.diaDetalleSeleccionado()?.totalButacas }}</strong></span>
+                    <span>•</span>
+                    <span>Total Recaudado: <strong class="text-emerald-600 dark:text-emerald-400">Bs. {{ formatMoney(store.diaDetalleSeleccionado()?.totalRecaudado) }}</strong></span>
+                </div>
+            </div>
+        </div>
+    </ng-template>
+
+    <!-- Contenido del Diálogo -->
+    <div class="flex flex-col gap-4 pt-2">
+        <!-- Barra de Búsqueda Local -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="text-sm font-medium text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                <i class="pi pi-ticket text-primary"></i>
+                Listado de Asientos Cobrados en esta Fecha
+                <span class="text-muted-color">({{ asientosFiltrados().length }} de {{ store.diaDetalleSeleccionado()?.totalButacas }})</span>
+            </div>
+
+            <div class="w-full sm:w-72">
+                <p-iconfield class="w-full">
+                    <p-inputicon styleClass="pi pi-search" />
+                    <input
+                        pInputText
+                        type="text"
+                        [ngModel]="filtroBusqueda()"
+                        (ngModelChange)="filtroBusqueda.set($event)"
+                        placeholder="Buscar cliente, asiento, operador..."
+                        class="w-full"
+                    />
+                </p-iconfield>
+            </div>
+        </div>
+
+        <!-- Tabla de Asientos del Día -->
+        <p-table
+            [value]="asientosFiltrados()"
+            [paginator]="true"
+            [rows]="10"
+            [rowsPerPageOptions]="[10, 20, 50]"
+            [showCurrentPageReport]="true"
+            currentPageReportTemplate="Mostrando {first} al {last} de {totalRecords} butacas cobradas"
+            styleClass="p-datatable-sm"
+            [tableStyle]="{ 'min-width': '50rem' }"
+        >
+            <ng-template #header>
+                <tr>
+                    <th style="width: 5rem" class="text-center font-semibold text-surface-900 dark:text-surface-0">#</th>
+                    <th class="font-semibold text-surface-900 dark:text-surface-0">Asiento</th>
+                    <th class="font-semibold text-surface-900 dark:text-surface-0">Gradería</th>
+                    <th class="font-semibold text-surface-900 dark:text-surface-0">Operador / Cajero</th>
+                    <th class="font-semibold text-surface-900 dark:text-surface-0">Cliente</th>
+                    <th class="font-semibold text-surface-900 dark:text-surface-0">WhatsApp</th>
+                    <th class="font-semibold text-surface-900 dark:text-surface-0 text-right">Monto (Bs)</th>
+                    <th class="font-semibold text-surface-900 dark:text-surface-0 text-center">Hora</th>
+                </tr>
+            </ng-template>
+
+            <ng-template #body let-asiento let-i="rowIndex">
+                <tr>
+                    <td class="text-center text-muted-color text-xs">{{ i + 1 }}</td>
+                    <td>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                            {{ asiento.codigo }}
+                        </span>
+                        <span class="text-xs text-muted-color block mt-0.5">Fila {{ asiento.fila }} · Col {{ asiento.columna }}</span>
+                    </td>
+                    <td>
+                        <span class="font-medium text-surface-900 dark:text-surface-0 text-sm">
+                            {{ asiento.graderia_nombre }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="flex items-center gap-1.5">
+                            <i class="pi pi-user text-muted-color text-xs"></i>
+                            <span class="text-sm font-medium text-surface-900 dark:text-surface-0">{{ asiento.operador_nombre }}</span>
+                        </div>
+                        <span class="text-xs text-muted-color">@{{ asiento.operador_username }}</span>
+                    </td>
+                    <td>
+                        <span class="font-medium text-surface-900 dark:text-surface-0 text-sm">
+                            {{ asiento.cliente_nombre || 'Sin nombre registrado' }}
+                        </span>
+                    </td>
+                    <td>
+                        @if (asiento.cliente_celular) {
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm text-surface-800 dark:text-surface-200">{{ asiento.cliente_celular }}</span>
+                                <p-button
+                                    icon="pi pi-whatsapp"
+                                    severity="success"
+                                    [text]="true"
+                                    [rounded]="true"
+                                    size="small"
+                                    pTooltip="Contactar por WhatsApp"
+                                    (click)="abrirWhatsApp(asiento.cliente_celular, asiento.cliente_nombre, asiento.codigo)"
+                                />
+                            </div>
+                        } @else {
+                            <span class="text-muted-color text-xs italic">No registrado</span>
+                        }
+                    </td>
+                    <td class="text-right">
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                            Bs. {{ formatMoney(asiento.monto) }}
+                        </span>
+                    </td>
+                    <td class="text-center text-xs text-muted-color font-mono">
+                        {{ asiento.hora_pago || '—' }}
+                    </td>
+                </tr>
+            </ng-template>
+
+            <ng-template #emptymessage>
+                <tr>
+                    <td colspan="8" class="text-center p-6 text-muted-color">
+                        <i class="pi pi-search text-3xl mb-2 text-muted-color block"></i>
+                        No se encontraron butacas vendidas que coincidan con el término buscado.
+                    </td>
+                </tr>
+            </ng-template>
+
+            <ng-template #footer>
+                <tr>
+                    <td colspan="6" class="text-right font-bold text-surface-900 dark:text-surface-0">
+                        Subtotal Cobrado en la Fecha:
+                    </td>
+                    <td class="text-right font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                        Bs. {{ formatMoney(store.diaDetalleSeleccionado()?.totalRecaudado) }}
+                    </td>
+                    <td></td>
+                </tr>
+            </ng-template>
+        </p-table>
+    </div>
+
+    <!-- Pie del Diálogo -->
+    <ng-template #footer>
+        <div class="flex justify-end gap-2">
+            <p-button
+                label="Cerrar"
+                icon="pi pi-times"
+                severity="secondary"
+                [rounded]="true"
+                (click)="cerrar()"
+            />
+        </div>
+    </ng-template>
+</p-dialog>

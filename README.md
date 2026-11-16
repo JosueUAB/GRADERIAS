@@ -1,511 +1,601 @@
-# 🏟️ Sistema de Gestión y Venta de Graderías (Eventos y Espectáculos)
+# 🏟️ Sistema de Gestión, Venta y Monitoreo Geoespacial de Graderías
 
-Sistema completo para el diseño geométrico matricial, reserva, venta e impresión de boletos para graderías y butacas de eventos masivos (Carnaval de Oruro, festivales, conciertos, eventos deportivos).
+> **Plataforma Integral para la Administración, Diseño Matricial, Venta de Butacas y Geolocalización en Tiempo Real de Graderías para el Carnaval de Oruro y Eventos Masivos.**
 
-Desarrollado bajo una arquitectura desacoplada:
-- **Backend:** Laravel 12.x (API RESTful, Sanctum, Owen-It Auditing, Spatie Permissions).
-- **Frontend:** Quasar Framework v2 (Vue 3, Vite, Pinia, jsPDF, Printd).
-- **Base de Datos:** MySQL / MariaDB (InnoDB).
+![Laravel 12](https://img.shields.io/badge/Backend-Laravel%2012-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)
+![Angular 21](https://img.shields.io/badge/Frontend-Angular%2021-DD0031?style=for-the-badge&logo=angular&logoColor=white)
+![PrimeNG 21](https://img.shields.io/badge/UI-PrimeNG%2021%20Sakai-06B6D4?style=for-the-badge&logo=primeng&logoColor=white)
+![MapLibre GL](https://img.shields.io/badge/Maps-MapLibre%20GL-396B9E?style=for-the-badge&logo=maplibre&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Styles-Tailwind%20CSS%20v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Docker](https://img.shields.io/badge/Container-Docker%20%26%20Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Nginx Proxy Manager](https://img.shields.io/badge/Proxy-Nginx%20Proxy%20Manager-F15833?style=for-the-badge&logo=nginx&logoColor=white)
 
 ---
 
 ## 📑 Tabla de Contenidos
-1. [Estructura del Proyecto](#-estructura-del-proyecto)
-2. [Base de Datos: Tablas y Relaciones](#-base-de-datos-tablas-y-relaciones)
-3. [Colas (Queues) y Tareas en Segundo Plano](#-colas-queues-y-tareas-en-segundo-plano)
-4. [Seeders del Sistema](#-seeders-del-sistema)
-5. [Roles y Permisos](#-roles-y-permisos)
-6. [Flujo de Negocio Paso a Paso](#-flujo-de-negocio-paso-a-paso)
-7. [Concurrencia, Transacciones y Doble Venta de Asientos](#-concurrencia-transacciones-y-doble-venta-de-asientos)
-8. [Auditoría y Rollbacks](#-auditoría-y-rollbacks)
-9. [Vulnerabilidades y Deuda Técnica Detectada](#-vulnerabilidades-y-deuda-técnica-detectada)
-10. [Hoja de Ruta para la Versión 2.0](#-hoja-de-ruta-para-la-versión-20)
-11. [Guía de Instalación y Ejecución](#-guía-de-instalación-y-ejecución)
-12. [Documentación Extendida](#-documentación-extendida)
+
+1. [Visión General del Sistema](#-visión-general-del-sistema)
+2. [Arquitectura y Stack Tecnológico](#-arquitectura-y-stack-tecnológico)
+3. [Módulos Principales y Capacidades](#-módulos-principales-y-capacidades)
+   - [3.1. Diseñador Geométrico Matricial](#31-diseñador-geométrico-matricial)
+   - [3.2. Mapa Interactivo Geoespacial (MapLibre GL)](#32-mapa-interactivo-geoespacial-maplibre-gl)
+   - [3.3. Consola de Venta y Boletería en Vivo](#33-consola-de-venta-y-boletería-en-vivo)
+   - [3.4. Catálogo Público para Clientes (`/g/:code`)](#34-catálogo-público-para-clientes-gcode)
+   - [3.5. Panel de Control y Métricas en Tiempo Real (Dashboard)](#35-panel-de-control-y-métricas-en-tiempo-real-dashboard)
+   - [3.6. Auditoría, Reportes Financieros y Liquidación](#36-auditoría-reportes-financieros-y-liquidación)
+4. [Roles y Matriz de Acceso](#-roles-y-matriz-de-acceso)
+5. [Flujos de Trabajo del Sistema](#-flujos-de-trabajo-del-sistema)
+6. [Despliegue con Docker y Docker Compose](#-despliegue-con-docker-y-docker-compose)
+7. [Manual de Configuración con NGINX PROXY MANAGER (NPM)](#-manual-de-configuración-con-nginx-proxy-manager-npm)
+   - [7.1. Arquitectura de Red y Direcciones IP](#71-arquitectura-de-red-y-direcciones-ip)
+   - [7.2. Escenario A: Despliegue con Subdominios y SSL (Recomendado)](#72-escenario-a-despliegue-con-subdominios-y-ssl-recomendado)
+   - [7.3. Escenario B: Despliegue en Red Local (LAN) por IP y Puertos](#73-escenario-b-despliegue-en-red-local-lan-por-ip-y-puertos)
+   - [7.4. Escenario C: Despliegue en un Solo Dominio con Enrutamiento por Ruta (`/api`)](#74-escenario-c-despliegue-en-un-solo-dominio-con-enrutamiento-por-ruta-api)
+8. [Ejecución Local en Desarrollo (Sin Docker)](#-ejecución-local-en-desarrollo-sin-docker)
+9. [Credenciales por Defecto y Datos de Prueba](#-credenciales-por-defecto-y-datos-de-prueba)
+10. [Solución de Problemas Frecuentes (FAQ)](#-solución-de-problemas-frecuentes-faq)
 
 ---
 
-## 📂 Estructura del Proyecto
+## 🌟 Visión General del Sistema
 
-```text
-graderias/
-├── back/                       # Backend (Laravel 12)
-│   ├── app/
-│   │   ├── Http/Controllers/   # AsientoController, GraderiaController, UserController, WhatsAppController
-│   │   ├── Mail/               # TicketPaidMail (Plantilla de correo con PDF adjunto)
-│   │   ├── Models/             # User, Graderia, Asiento
-│   │   ├── Policies/           # GraderiaPolicy (control de propiedad)
-│   │   └── Services/           # AsientoGenerator (algoritmo matricial de asientos)
-│   ├── database/
-│   │   ├── migrations/         # Migraciones de base de datos
-│   │   └── seeders/            # DatabaseSeeder, EventoSeeder (legacy)
-│   └── routes/
-│       └── api.php             # Definición de endpoints REST y middlewares
-├── front/                      # Frontend (Quasar Framework v2 / Vue 3)
-│   ├── src/
-│   │   ├── addons/             # Imprimir.js (recibos térmicos), Alert.js, Excel.js
-│   │   ├── boot/               # axios.js (interceptor de token Sanctum)
-│   │   ├── layouts/            # MainLayout, PublicLayout, Login
-│   │   ├── pages/              # Graderias, Asientos, Venta, Usuarios, Perfil
-│   │   └── stores/             # Pinia Store (estado de autenticación)
-├── detalle_sistema.md          # Documento maestro técnico detallado
-└── README.md                   # Guía de arquitectura y operaciones
-```
+El **Sistema de Graderías** es una solución web empresarial desarrollada para digitalizar, controlar y transparentar la venta de asientos temporales en eventos masivos de alta demanda, con foco prioritario en el **Carnaval de Oruro**.
+
+### Principales Problemas que Resuelve:
+- ❌ **Elimina el descontrol manual:** Sustituye cuadernos y mapas en papel por matrices interactivas computarizadas.
+- 🚫 **Prevención de sobreventa y doble asignación:** Bloqueo de butacas con estados en tiempo real (`LIBRE`, `RESERVADO`, `PAGADO`, `BLOQUEADO`).
+- 📍 **Ubicación geoespacial exacta:** Mapa interactivo con pines georreferenciados en el recorrido oficial del Carnaval.
+- 📱 **Atención inmediata al cliente:** Registro de nombre y teléfono con botón directo de **WhatsApp** para envío de comprobantes y enlaces de confirmación.
+- 📊 **Auditoría e ingresos en vivo:** Dashboards diferenciados para el **Administrador General** (control global del evento) y los **Operadores de Boletería** (control de sus propios sectores y recaudación diaria).
 
 ---
 
-## 🗄️ Base de Datos: Tablas y Relaciones
+## 🏗️ Arquitectura y Stack Tecnológico
 
-El esquema de base de datos se centra en la relación entre el **Usuario**, la **Gradería** y los **Asientos** generados automáticamente:
+El sistema sigue una arquitectura desacoplada y moderna orientada a servicios RESTful:
 
 ```mermaid
-erDiagram
-    users ||--o{ graderias : "posee (user_id)"
-    graderias ||--o{ asientos : "contiene (graderia_id)"
-    users ||--o{ model_has_roles : "tiene"
-    roles ||--o{ role_has_permissions : "contiene"
-    permissions ||--o{ role_has_permissions : "asignado"
-    users ||--o{ model_has_permissions : "permiso_directo"
-    users ||--o{ audits : "auditoria_autor"
+flowchart TD
+    subgraph Clientes["Navegadores & Dispositivos Móviles"]
+        AdminUser["💻 Administrador General"]
+        OperatorUser["📱 Operador de Boletería"]
+        PublicClient["👥 Espectador / Cliente Público"]
+    end
+
+    subgraph ReverseProxy["Nginx Proxy Manager / Gateway"]
+        NPM["🛡️ Nginx Proxy Manager (SSL / Reverse Proxy)"]
+    end
+
+    subgraph DockerEnv["Entorno de Contenedores Docker"]
+        subgraph FrontContainer["graderias_front (Nginx Alpine)"]
+            FrontApp["Angular 21 + PrimeNG 21 + Tailwind v4 + MapLibre GL"]
+        end
+
+        subgraph BackContainer["graderias_back (PHP 8.4-FPM + Nginx + Supervisor)"]
+            LaravelAPI["Laravel 12 (API RESTful + Sanctum Auth)"]
+            QueueWorker["Worker de Colas en Segundo Plano"]
+        end
+
+        subgraph DBContainer["graderias_db (MySQL 8.0)"]
+            MySQLDB[("Base de Datos MySQL (InnoDB, Transacciones)")]
+        end
+    end
+
+    AdminUser -->|HTTPS| NPM
+    OperatorUser -->|HTTPS| NPM
+    PublicClient -->|HTTPS| NPM
+
+    NPM -->|Puerto 8080 / HTTP| FrontContainer
+    NPM -->|Puerto 8000 / HTTP| BackContainer
+
+    FrontApp -->|Consultas RESTful API| LaravelAPI
+    LaravelAPI -->|Lectura / Escritura| MySQLDB
+    QueueWorker -->|Procesamiento asíncrono| MySQLDB
 ```
 
-### 1. `users` (Usuarios y Operadores)
-- **Campos principales:** `id`, `name`, `username`, `email`, `password` (hash Bcrypt), `clave` (⚠️ texto plano), `telefono_contacto_1`, `telefono_contacto_2`, `avatar`, `role`.
-- **Propósito:** Credenciales de acceso a la consola de administración y teléfonos de contacto expuestos en la vista pública.
-
-### 2. `graderias` (Estructura y Dimensiones de Tribunas)
-- **Campos principales:** `id`, `user_id` (dueño), `nombre`, `codigo`, `code` (token alfanumérico público único para compartir por enlace), `direccion`, referencias (`ref_izquierda`, `ref_derecha`, `ref_frente`), `filas`, `columnas`, `capacidad_total`, `etiqueta_modo` (`fila` o `columna`), `start_top` (booleano), `start_left` (booleano), `activo`.
-- **Propósito:** Define las dimensiones geométricas y reglas de nomenclatura para el renderizado del mapa de asientos.
-
-### 3. `asientos` (Butacas Individuales)
-- **Campos principales:** `id`, `graderia_id`, `fila`, `columna`, `codigo` (ej: "A1", "B12"), `descripcion`, `estado` (`LIBRE`, `RESERVADO`, `PAGADO`, `BLOQUEADO`), `cliente_nombre`, `cliente_celular`, `monto`, `reservado_at`, `pagado_at`.
-- **Restricción de unicidad:** `UNIQUE(graderia_id, codigo)`. No pueden existir dos asientos con el mismo código en una misma gradería.
-
-### 4. Tablas del Ecosistema de Seguridad y Auditoría
-- `roles`, `permissions`, `model_has_roles`, `model_has_permissions`, `role_has_permissions` (Spatie Permission v6).
-- `audits` (Owen-It Auditing): Registra cada cambio (INSERT, UPDATE, DELETE) en usuarios, graderías y asientos con valores anteriores y posteriores.
+### Componentes Tecnológicos:
+- **Backend:** **Laravel 12** con PHP 8.4, Laravel Sanctum (Tokens Bearer), Spatie Laravel Permission, DomPDF, Simple QrCode, Owen-It Auditing.
+- **Frontend:** **Angular 21** (Standalone Components, Signals reactivas, Redux Signal Stores), **PrimeNG 21** (Presets Aura/Lara, Sakai Admin Template), **Tailwind CSS v4**, **MapLibre GL** con tiles vectoriales OpenFreeMap.
+- **Base de Datos:** **MySQL 8.0** con transacciones atómicas `InnoDB`.
+- **Infraestructura:** Docker Compose, Nginx Alpine, Supervisor, Nginx Proxy Manager.
 
 ---
 
-## ⚡ Colas (Queues) y Tareas en Segundo Plano
+## 🚀 Módulos Principales y Capacidades
 
-- **Driver configurado:** `QUEUE_CONNECTION=database` en el archivo `.env`.
-- **Tablas migradas:** `jobs`, `job_batches`, `failed_jobs`.
-- **Script en composer:** `php artisan queue:listen --tries=1`.
-- **Situación actual:** Existe la clase de correo encolable `TicketPaidMail`, pero **no se encuentra encolada activamente en los controladores**. Las ventas, generación de asientos y WhatsApp se procesan de forma síncrona en el ciclo HTTP.
+### 3.1. Diseñador Geométrico Matricial
+- Creación rápida de graderías ingresando dimensiones: **filas** (ej. 10) y **columnas** (ej. 20).
+- Algoritmo generador matricial (`AsientoGenerator`) que genera automáticamente la nomenclatura alfabética/numérica:
+  - Modo Filas: Letras en filas (`A1`, `A2`... `B1`, `B2`).
+  - Modo Columnas: Letras en columnas (`1A`, `1B`... `2A`, `2B`).
+- Orientación configurable:
+  - Fila 1 arriba o abajo (`start_top`).
+  - Columna 1 a la izquierda o derecha (`start_left`).
+- Asignación de propietario/operador responsable.
+
+### 3.2. Mapa Interactivo Geoespacial (MapLibre GL)
+- Mapa dinámico basado en MapLibre GL y estilos OpenFreeMap (modo claro y oscuro según el tema de la aplicación).
+- **Selector interactivo de coordenadas:** Al crear o editar una gradería, el usuario puede abrir el mapa, hacer clic sobre cualquier punto del recorrido o arrastrar el pin para capturar con precisión milimétrica la latitud y longitud.
+- **Pines y Popups en Vivo:** Cada gradería cuenta con un marcador con badge de color y popup interactivo que despliega:
+  - Nombre del sector y dirección física.
+  - Aforo total, butacas libres, reservadas y vendidas.
+  - Barra de progreso de ocupación en porcentaje.
+  - Botón directo para ingresar a la **Boletería**.
+- **Aislamiento por Rol:**
+  - El **Administrador** visualiza la totalidad de graderías del circuito.
+  - El **Operador** visualiza exclusivamente sus sectores asignados.
+
+### 3.3. Consola de Venta y Boletería en Vivo
+- Vista visual interactiva de la matriz de butacas con colores según su estado:
+  - 🟢 **LIBRE:** Asiento disponible para compra o reserva.
+  - 🟡 **RESERVADO:** Apartado temporalmente.
+  - 🔵 **PAGADO:** Cobrado y confirmado.
+  - ⚪ **BLOQUEADO:** Fuera de venta (pasillos, columnas estructurales, seguridad).
+- **Selección múltiple (Lotes):** El operador puede seleccionar varias butacas simultáneamente con un clic y cambiar su estado en bloque.
+- **Cobro y Registro de Cliente:** Al pasar a `PAGADO` o `RESERVADO`, se registra:
+  - Nombre completo del comprador.
+  - Número de teléfono celular / WhatsApp.
+  - Monto total cobrado (distribuido proporcionalmente en cada asiento).
+- **Integración con WhatsApp:** Botón que abre automáticamente una conversación con el cliente con el mensaje de confirmación y el detalle de sus butacas.
+- **Emisión de Tickets y Recibos:**
+  - Ticket individual con código QR para control de acceso.
+  - Planilla consolidada por cliente con todas sus butacas compradas.
+
+### 3.4. Catálogo Público para Clientes (`/g/:code`)
+- Enlace alfanumérico único por gradería (ejemplo: `https://tusitio.com/g/33ANPJHKVJ`).
+- **Acceso 100% público sin login:** Los espectadores escanean el código QR o abren el enlace desde su celular para verificar en tiempo real:
+  - Qué asientos están libres y cuáles ya están ocupados.
+  - La dirección exacta y referencias del sector.
+  - Botón para llamar o contactar por WhatsApp al operador dueño de la gradería para consultar precios y adquirir sus entradas.
+
+### 3.5. Panel de Control y Métricas en Tiempo Real (Dashboard)
+El panel de inicio (`/`) se adapta automáticamente según el rol del usuario autenticado:
+
+#### 👑 Vista Administrador General:
+- **6 Tarjetas de KPIs Globales:** Recaudación acumulada del evento, aforo total ocupado, ventas realizadas en la jornada (hoy), reservas pendientes por cobrar, sectores activos y total de cajeros en operación.
+- **Ranking y Desempeño de Operadores:** Tabla ordenada por recaudación con total de graderías a su cargo, butacas cobradas y botón para inspeccionar su liquidación.
+- **Monitor de Sectores:** Lista de graderías con indicador de estado y acceso directo a boletería.
+- **Evolución Diaria de Recaudación:** Historial cronológico día por día con récord de recaudación y butacas vendidas.
+- **Auditoría en Vivo:** Feed en tiempo real de los últimos cobros registrados en cualquier sector del evento.
+- **Accesos Rápidos Globales:** Enlaces a Mapa, Seguimiento de Ventas, Diseñar Gradería, Gestión de Usuarios y Exportación de PDF General.
+
+#### 🎫 Vista Operador de Boletería:
+- **4 Tarjetas de KPIs Personales:** Mi recaudación acumulada, aforo comprometido en mis graderías, mis cobros de la jornada de hoy y monto por cobrar en reservas activas.
+- **Mis Graderías Asignadas:** Tabla con mis sectores, aforo, estado y botones de Boletería, Reportes Financieros y copia de enlace público.
+- **Mis Últimos Cobros:** Tabla de los cobros recientes realizados por mi usuario con botón directo de WhatsApp.
+- **Evolución Diaria Personal:** Desglose día por día de mis ventas con botón para ver el detalle de asientos cobrados en cada fecha.
+- **Accesos Rápidos del Operador:** Atajos directos a *Mis Graderías*, *Diseñar Gradería*, *Mapa de Graderías* y *Mis Reportes*.
+
+### 3.6. Auditoría, Reportes Financieros y Liquidación
+- **Modal Unificado de Reportes:** Permite consultar los ingresos diarios tanto de una gradería individual como de todas las graderías consolidadas de un operador.
+- **Generación de Reportes PDF:**
+  - Reporte consolidado de auditoría de operadores.
+  - Reporte financiero diario con desglose de asientos vendidos y montos totales en Bolivianos (Bs).
+  - Comprobantes térmicos aptos para impresoras POS de 80mm.
 
 ---
 
-## 🌱 Seeders del Sistema
+## 👥 Roles y Matriz de Acceso
 
-1. **`DatabaseSeeder.php`**:
-   - Genera el usuario administrador por defecto:
-     - **Usuario:** `admin`
-     - **Contraseña:** `admin123Admin`
-     - **Rol:** `Administrador`
-   - Inicializa los permisos: `Dashboard`, `Usuarios`, `Graderias`.
-   - Asigna todos los permisos al usuario admin.
-2. **`EventoSeeder.php` / `EventoHorarioSeeder.php`**:
-   - Archivos heredados de un sistema turístico previo (Egipto). Están comentados en `DatabaseSeeder` y deben depurarse en la Versión 2.0.
-
----
-
-## 👥 Roles y Permisos
-
-El sistema utiliza un esquema híbrido:
-
-| Permiso | Módulos Permitidos | Funcionalidad en el Sistema |
-|---|---|---|
-| **Dashboard** | Inicio (`/`) | Visualización de estadísticas generales de ocupación. |
-| **Usuarios** | `/usuarios`, `/users/*` | Crear operadores, cambiar contraseñas de otros usuarios, asignar permisos y avatares. |
-| **Graderias** | `/mis-graderias/*` | Diseñar graderías, generar butacas, consola de venta, reservas y reportes de impresión. |
-
-> **Nota de Seguridad:** Las políticas actuales verifican estrictamente `graderia.user_id === user.id`. Por ende, un usuario con rol `Administrador` actualmente **no puede ver ni editar graderías de otros usuarios**. En la Versión 2.0 se debe habilitar el acceso global para administradores.
+| Capacidad / Módulo | Administrador General | Operador de Boletería | Espectador / Público |
+|---|:---:|:---:|:---:|
+| Ver Métricas y KPIs Globales del Evento | ✅ | ❌ (Solo ve sus métricas) | ❌ |
+| Diseñar y Crear Nuevas Graderías | ✅ | ✅ | ❌ |
+| Ver Todas las Graderías en el Mapa | ✅ | ❌ (Solo sus graderías) | ❌ |
+| Vender y Cobrar Butacas en Boletería | ✅ (En cualquier gradería) | ✅ (En sus graderías) | ❌ |
+| Contactar Cliente por WhatsApp con Boleto | ✅ | ✅ | ❌ |
+| Reportes de Ingresos Diarios Personales | ✅ | ✅ | ❌ |
+| Ranking y Liquidación de Otros Operadores | ✅ | ❌ | ❌ |
+| Gestión de Usuarios y Permisos | ✅ | ❌ | ❌ |
+| Personalización de Tema Visual y Colores | ✅ | ❌ | ❌ |
+| Consultar Disponibilidad de Butacas en Vivo | ✅ | ✅ | ✅ (`/g/:code`) |
 
 ---
 
-## 🔄 Flujo de Negocio Paso a Paso
+## 🔄 Flujos de Trabajo del Sistema
 
-1. **Creación de Gradería:** El usuario ingresa a `/mis-graderias/nueva`, define nombre, filas (ej. 10), columnas (ej. 20) y orientación.
-2. **Generación Matricial (`AsientoGenerator`):** El backend ejecuta un algoritmo de conversión numérica a letras de alfabeto (1=A, 2=B... 27=AA) y realiza un `upsert` por lotes de 1,000 en 1,000 asientos en estado `LIBRE`.
-3. **Consola de Venta (`/mis-graderias/:id/venta`):**
-   - El operador visualiza la matriz interactiva.
-   - Puede seleccionar uno o múltiples asientos.
-   - Al pulsar "Gestionar selección", abre un modal para cambiar el estado a `RESERVADO` o `PAGADO`, ingresando nombre, teléfono y monto total.
-   - El backend distribuye el monto total equitativamente entre los asientos seleccionados.
-4. **Emisión de Boletos e Impresión:**
-   - **Boleto individual:** Genera PDF con código QR y detalles del asiento.
-   - **Planilla por cliente:** Agrupa todas las butacas compradas por una misma persona.
-   - **Ticket térmico POS:** Diseñado para impresoras de 80mm vía `Imprimir.js`.
-5. **Catálogo Público (`/g/:code`):**
-   - Enlace público sin autenticación.
-   - Muestra el estado de las graderías en tiempo real y los teléfonos del dueño para que los clientes llamen o envíen mensajes de WhatsApp para adquirir sus butacas.
+### Flujo 1: Alta y Geolocalización de una Gradería
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Operador / Administrador
+    participant UI as Frontend Angular
+    participant API as Backend Laravel
+    participant DB as Base de Datos MySQL
 
----
+    U->>UI: Ingresa a "Diseñar Gradería" (/graderias/nueva)
+    U->>UI: Define Nombre, Filas (10), Columnas (15) y Orientación
+    U->>UI: Hace clic en "Seleccionar en Mapa" y fija el pin en el circuito
+    U->>UI: Presiona "Crear Gradería"
+    UI->>API: POST /api/mis-graderias (datos geométricos + lat/lng)
+    API->>DB: Inserta registro en tabla 'graderias'
+    API->>API: AsientoGenerator::generateFor() calcula 150 butacas
+    API->>DB: Inserción masiva en tabla 'asientos' (estado LIBRE)
+    API-->>UI: Retorna Gradería con código público generado
+    UI-->>U: Muestra notificación de éxito y redirige a la lista
+```
 
-## 🔒 Concurrencia, Transacciones y Doble Venta de Asientos
+### Flujo 2: Venta de Asientos en Boletería
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Op as Cajero / Operador
+    participant UI as Consola de Venta
+    participant API as Backend Laravel
+    participant DB as MySQL (InnoDB)
+    actor Cli as Cliente Comprador
 
-### ¿Cómo evita el sistema actual que se venda dos veces el mismo asiento?
-> ⚠️ **RESPUESTA CRUDA: ACTUALMENTE NO LO EVITA.**
-
-A pesar de que el código utiliza `DB::transaction(...)`:
-1. **No utiliza Bloqueo Pesimista:** La consulta `Asiento::whereIn('id', $ids)->get()` lee los registros sin `lockForUpdate()`.
-2. **No valida el estado previo:** Si dos cajeros tienen la pantalla abierta con el asiento `A1` libre y ambos presionan "Vender" al mismo tiempo:
-   - Ambas peticiones inician transacciones paralelas.
-   - El segundo cajero en terminar **sobreescribirá silenciosamente** al primer cajero (`Last-Write-Wins`).
-   - El primer comprador tendrá un ticket impreso, pero en el sistema figurará el segundo comprador.
-3. **El índice `UNIQUE(graderia_id, codigo)`:** Sólo impide insertar dos filas con el mismo código, pero como el asiento ya está creado, ambos cajeros hacen un `UPDATE` sobre la misma fila sin disparar error de clave duplicada.
-
-### Solución requerida para la Versión 2.0:
-Implementar **Pessimistic Locking** dentro de la transacción de venta:
-```php
-DB::transaction(function () use ($graderiaId, $seatIds, $cliente) {
-    // SELECT ... FOR UPDATE (bloquea las filas en InnoDB hasta el COMMIT)
-    $seats = Asiento::where('graderia_id', $graderiaId)
-        ->whereIn('id', $seatIds)
-        ->lockForUpdate()
-        ->get();
-
-    // Verificación atómica de disponibilidad
-    foreach ($seats as $seat) {
-        if ($seat->estado !== 'LIBRE') {
-            throw new \Exception("El asiento {$seat->codigo} ya fue adquirido por otro usuario.");
-        }
-    }
-
-    // Actualización segura
-    foreach ($seats as $seat) {
-        $seat->update([
-            'estado' => 'PAGADO',
-            'cliente_nombre' => $cliente['nombre'],
-            'pagado_at' => now(),
-        ]);
-    }
-});
+    Op->>UI: Abre la gradería en /graderias/:id/venta
+    UI->>API: GET /api/mis-graderias/:id/venta
+    API-->>UI: Retorna matriz de butacas con estados actuales
+    Op->>UI: Selecciona butacas A1, A2, A3 (cambian a color amarillo de selección)
+    Op->>UI: Presiona "Gestionar Selección"
+    Op->>UI: Ingresa Nombre del Cliente, Celular WhatsApp y Monto Total
+    Op->>UI: Elige acción "Marcar como PAGADO"
+    UI->>API: POST /api/mis-graderias/:id/asientos/bulk (IDs, Cliente, Monto)
+    Note over API,DB: Transacción DB con bloqueo pesimista
+    API->>DB: Actualiza asientos a estado PAGADO con fecha actual
+    API-->>UI: Respuesta exitosa (OK)
+    UI-->>Op: Butacas cambian a color azul/rojo (PAGADO)
+    Op->>UI: Clic en botón "WhatsApp" del asiento
+    UI->>Cli: Abre chat de WhatsApp con detalle y enlace de comprobante
 ```
 
 ---
 
-## 🛡️ Auditoría y Rollbacks
+## 🐳 Despliegue con Docker y Docker Compose
 
-- **Rollbacks Automáticos:** Cuando ocurre un error o excepción dentro de una transacción `DB::transaction(...)` (por ejemplo, validaciones fallidas de cliente o montos nulos), Laravel ejecuta automáticamente un `ROLLBACK` en MySQL, deshaciendo los cambios en los asientos involucrados.
-- **Auditoría (Owen-It):** Cada cambio de estado de un asiento genera una fila en la tabla `audits` con el `user_id`, la IP, la fecha y los valores anteriores/nuevos (`old_values` y `new_values`).
+El proyecto está 100% contenerizado para levantarse en cualquier servidor Linux, VPS o máquina local con un único comando.
 
----
+### Requisitos Previos:
+- **Docker Engine** (versión 24 o superior): `docker -v`
+- **Docker Compose** (versión v2.20 o superior): `docker compose version`
 
-## ⚠️ Vulnerabilidades y Deuda Técnica Detectada
-
-1. **Contraseñas en Texto Plano en Base de Datos:**
-   - La tabla `users` contiene una columna llamada `clave`.
-   - En `UserController@changeMyPassword` y `adminResetPassword`, el sistema guarda `$user->clave = $request->password`. Esto expone las contraseñas sin cifrar ante cualquier volcado de base de datos.
-2. **Consumo Excesivo de Memoria en Graderías Grandes:**
-   - Graderías de 200x200 (40,000 asientos) cargan todos los modelos Eloquent en memoria en una sola petición (`venta`), lo que puede superar el `memory_limit` de PHP y congelar el DOM del navegador.
-3. **Desnormalización de Ventas:**
-   - Los datos del cliente (`cliente_nombre`, `monto`) están incrustados directamente en la tabla `asientos`. No existe una entidad `ventas` o `pagos` que agrupe una compra múltiple en una única transacción con número de factura.
-4. **Falta de Expiración Automática de Reservas:**
-   - Los asientos en estado `RESERVADO` permanecen bloqueados indefinidamente a menos que un operador los libere manualmente.
+### Estructura de Contenedores:
+1. **`graderias_db`**: Base de datos MySQL 8.0 con volumen persistente `graderias_db_data`.
+2. **`graderias_back`**: Laravel 12 con PHP 8.4-FPM + Nginx interno + Supervisor en el puerto `8000`.
+3. **`graderias_front`**: Angular 21 compilado y servido por Nginx Alpine en el puerto `8080`.
 
 ---
 
-## 🚀 Hoja de Ruta para la Versión 2.0
-
-- [ ] **Seguridad:** Eliminar la columna `clave` de la tabla `users` y almacenar únicamente el hash Bcrypt en `password`.
-- [ ] **Anti-Doble Venta:** Implementar `lockForUpdate()` en transacciones de venta y bloqueos temporales con Redis (Hold de 10 minutos).
-- [ ] **Módulo de Ventas Normalizado:** Crear tablas `ventas`, `venta_detalles`, `pagos` y `clientes`.
-- [ ] **Tiempo Real (WebSockets):** Integrar Laravel Reverb para que la selección de un asiento se refleje al instante en las pantallas de los demás cajeros y clientes públicos.
-- [ ] **Expiración de Reservas:** Tarea programada (`cron` / `queue job`) que libere automáticamente las reservas no pagadas tras 15 minutos.
-- [ ] **Superadministrador Global:** Permitir que los administradores supervisen y administren graderías creadas por cualquier usuario.
-
----
-
-## 🛠️ Guía de Instalación y Ejecución
-
-Guía paso a paso para levantar el proyecto completo desde cero. El **backend** y el **frontend** se ejecutan en **dos terminales independientes**.
-
-### ✅ Requisitos Previos
-
-| Herramienta | Versión recomendada | Verificar con |
-|---|---|---|
-| PHP | 8.2 o superior (probado con 8.4) | `php -v` |
-| Composer | 2.x | `composer -V` |
-| MySQL / MariaDB | MySQL 8.0+ / MariaDB 10.5+ | `mysql --version` |
-| Node.js | 20, 22 o 24 LTS | `node -v` |
-| npm | 6.13.4 o superior | `npm -v` |
-
-Extensiones PHP necesarias: `pdo_mysql`, `mbstring`, `gd` (o `imagick`), `fileinfo`, `openssl` y `zip`.
-
----
-
-### 1️⃣ Backend (Laravel 12 — API REST)
-
-#### 1.1 Crear la base de datos
-
+### Paso 1: Clonar el Repositorio
 ```bash
-mysql -u root -p -e "CREATE DATABASE back_graderias CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+git clone https://github.com/tu-usuario/graderias.git
+cd graderias
 ```
 
-> El nombre `back_graderias` debe coincidir con `DB_DATABASE` del archivo `.env`. Si usas otro nombre, cámbialo en ambos lugares.
-
-#### 1.2 Instalar dependencias y crear el `.env`
-
+### Paso 2: Crear el Archivo de Variables de Entorno
+Copia la plantilla preconfigurada de Docker:
 ```bash
-cd back
-composer install
-cp .env.example .env
+cp .env.docker.example .env
 ```
 
-En Windows (CMD/PowerShell) usa `copy .env.example .env`.
-
-Edita `back/.env` con tus datos de conexión:
-
+Edita el archivo `.env` según tus necesidades de puertos y contraseñas:
 ```dotenv
-APP_NAME=Graderias
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://localhost:8000
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
+# Puertos en el servidor Host
+FRONTEND_PORT=8080
+BACKEND_PORT=8000
 DB_PORT=3306
+
+# Credenciales de la Base de Datos
 DB_DATABASE=back_graderias
-DB_USERNAME=root
-DB_PASSWORD=tu_password
+DB_USERNAME=graderias_user
+DB_PASSWORD=TuPasswordSeguro2026!
+DB_ROOT_PASSWORD=TuRootPasswordSeguro2026!
 
-QUEUE_CONNECTION=database
+# URLs públicas (ver sección de Nginx Proxy Manager)
+BACKEND_URL=http://localhost:8000
+PUBLIC_API_URL=http://localhost:8000/api
+PUBLIC_AVATAR_URL=http://localhost:8000/images
 ```
 
-> `DB_DATABASE` debe ser la misma base creada en el paso 1.1.
-
-#### 1.3 Generar la clave de la aplicación
-
+### Paso 3: Construir y Levantar los Contenedores
 ```bash
-php artisan key:generate
+docker compose up -d --build
 ```
 
-Esto escribe `APP_KEY` en el `.env`. Sin este paso Laravel no arranca y muestra el error `No application encryption key has been specified`.
+El script de inicio automático de Laravel se encargará de:
+1. Esperar a que MySQL esté 100% listo.
+2. Ejecutar las migraciones de base de datos (`php artisan migrate --force`).
+3. Generar la clave de encriptación (`APP_KEY`) si no existiera.
+4. Crear el enlace simbólico de almacenamiento (`php artisan storage:link`).
+5. Crear el usuario Administrador y permisos iniciales automáticamente si la base de datos está vacía.
 
-#### 1.4 Crear las tablas y cargar los datos iniciales
-
+### Paso 4: Verificar el Estado de los Contenedores
 ```bash
-php artisan migrate
-php artisan db:seed
+docker compose ps
+```
+Deberás ver los tres servicios en estado `Up`:
+```text
+NAME               IMAGE                     STATUS                   PORTS
+graderias_db       mysql:8.0                 Up (healthy)             0.0.0.0:3306->3306/tcp
+graderias_back     graderias-graderias_back  Up                       0.0.0.0:8000->8000/tcp
+graderias_front    graderias-graderias_front Up                       0.0.0.0:8080->80/tcp
 ```
 
-También puedes hacerlo en un solo comando:
-
+### Comandos de Utilidad con Docker:
 ```bash
-php artisan migrate --seed
-```
+# Ver logs en vivo de todos los contenedores
+docker compose logs -f
 
-Para reiniciar la base de datos desde cero (**⚠️ elimina todos los datos existentes**):
+# Ver logs solo del backend (Laravel)
+docker compose logs -f graderias_back
 
-```bash
-php artisan migrate:fresh --seed
-```
+# Ver logs solo del frontend (Nginx/Angular)
+docker compose logs -f graderias_front
 
-> `php artisan db:seed` ejecuta `DatabaseSeeder` y crea el usuario administrador. No lo ejecutes dos veces sobre la misma base, porque intentará crear el mismo usuario y fallará por duplicado. Para volver a sembrar, usa `migrate:fresh --seed`.
+# Ejecutar comandos de Artisan dentro del contenedor
+docker compose exec graderias_back php artisan route:list
+docker compose exec graderias_back php artisan tinker
 
-#### 1.5 Enlazar storage y ajustar permisos (Linux/macOS)
+# Reiniciar los contenedores
+docker compose restart
 
-```bash
-php artisan storage:link
-chmod -R 775 storage bootstrap/cache
-```
+# Detener los contenedores (los datos de MySQL se conservan en el volumen)
+docker compose down
 
-En Windows no necesitas ejecutar `chmod`.
-
-#### 1.6 Arrancar el servidor
-
-```bash
-php artisan serve
-```
-
-La API quedará disponible en: **http://localhost:8000**  
-Ruta base de la API: **http://localhost:8000/api/**
-
-#### 1.7 Colas (opcional)
-
-El proyecto usa `QUEUE_CONNECTION=database`. Si necesitas procesar correos o tareas en segundo plano, abre otra terminal y ejecuta:
-
-```bash
-cd back
-php artisan queue:work
+# Reiniciar base de datos desde cero (⚠️ borra todos los datos)
+docker compose down -v
+docker compose up -d
 ```
 
 ---
 
-### 2️⃣ Frontend (Quasar Framework v2 + Vue 3)
+## 🛡️ Manual de Configuración con NGINX PROXY MANAGER (NPM)
 
-#### 2.1 Configurar la URL de la API
+**Nginx Proxy Manager (NPM)** es una interfaz web intuitiva para administrar proxies inversos, redirecciones y certificados SSL gratuitos de **Let's Encrypt**.
 
-El archivo `front/.env.development` está ignorado por git, así que debes crearlo. Desde la raíz del proyecto:
+### 7.1. Arquitectura de Red y Direcciones IP
 
-```bash
-cd front
-cat > .env.development <<'EOF'
-VITE_API_BACK=http://localhost:8000/api/
-VITE_VERSION=4.4.1
-EOF
+Identifica la **IP de tu servidor** (ejecuta `ip a` o `hostname -I` en Linux).
+- Supongamos que la IP de tu servidor es: `192.168.1.100` (o la IP pública de tu VPS: `203.0.113.50`).
+- El contenedor Frontend escucha en el puerto host: `8080`.
+- El contenedor Backend escucha en el puerto host: `8000`.
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        INTERNET / RED LOCAL                            │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │ (Puertos 80 y 443)
+                                     ▼
+                ┌────────────────────────────────────────┐
+                │          NGINX PROXY MANAGER           │
+                │        (Proxy inverso con SSL)         │
+                └────────────────────┬───────────────────┘
+                                     │
+           ┌─────────────────────────┴─────────────────────────┐
+           │                                                   │
+           ▼ (Hacia http://192.168.1.100:8080)                 ▼ (Hacia http://192.168.1.100:8000)
+┌───────────────────────┐                           ┌───────────────────────┐
+│    graderias_front    │                           │    graderias_back     │
+│   (Frontend Angular)  │                           │   (Backend Laravel)   │
+└───────────────────────┘                           └───────────────────────┘
 ```
 
-En Windows puedes crear el archivo manualmente con el Bloc de notas y el mismo contenido.
+---
 
-> La URL debe apuntar al backend (`http://localhost:8000/api/`). Si el backend corre en otro host o puerto, actualiza `VITE_API_BACK` y reinicia el servidor de desarrollo.
+### 7.2. Escenario A: Despliegue con Subdominios y SSL (Recomendado para Producción)
 
-Para producción, crea `front/.env.production` con la URL real:
+Es la configuración profesional estándar:
+- **Frontend:** `https://graderias.tudominio.com`
+- **Backend API:** `https://api.graderias.tudominio.com`
 
+#### Paso A.1: Configurar el archivo `.env` del proyecto
+En tu archivo `.env` de la raíz del proyecto, define las URLs públicas de tus subdominios:
 ```dotenv
-VITE_API_BACK=https://tu-dominio.com/api/
-VITE_VERSION=4.4.1
+FRONTEND_PORT=8080
+BACKEND_PORT=8000
+
+BACKEND_URL=https://api.graderias.tudominio.com
+PUBLIC_API_URL=https://api.graderias.tudominio.com/api
+PUBLIC_AVATAR_URL=https://api.graderias.tudominio.com/images
 ```
-
-#### 2.2 Instalar dependencias
-
+Reinicia el frontend para que tome las nuevas URLs:
 ```bash
-npm install
+docker compose restart graderias_front
 ```
+> **Nota técnica:** Gracias a la inyección en tiempo de ejecución (`assets/env.js`), el frontend actualizará la URL de la API **al instante sin necesidad de recompilar Angular**.
 
-El script `postinstall` ejecuta automáticamente `quasar prepare`.
+#### Paso A.2: Crear el Proxy Host para el FRONTEND en NPM
+1. Ingresa al panel de Nginx Proxy Manager (usualmente en el puerto `81`, ej: `http://192.168.1.100:81`).
+2. Ve a **Hosts** > **Proxy Hosts** > **Add Proxy Host**.
+3. Pestaña **Details**:
+   - **Domain Names:** `graderias.tudominio.com`
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `192.168.1.100` *(o `graderias_front` si NPM está en la misma red Docker)*
+   - **Forward Port:** `8080` *(o `80` si usas nombre de contenedor)*
+   - Activa:
+     - ✅ **Cache Assets**
+     - ✅ **Block Common Exploits**
+     - ✅ **Websockets Support**
+4. Pestaña **SSL**:
+   - **SSL Certificate:** *Request a new SSL Certificate*
+   - Activa:
+     - ✅ **Force SSL**
+     - ✅ **HTTP/2 Support**
+     - ✅ **HSTS Enabled**
+   - Ingresa tu correo y acepta los términos de Let's Encrypt.
+5. Presiona **Save**.
 
-#### 2.3 Arrancar en modo desarrollo
+#### Paso A.3: Crear el Proxy Host para el BACKEND en NPM
+1. En Nginx Proxy Manager, pulsa **Add Proxy Host**.
+2. Pestaña **Details**:
+   - **Domain Names:** `api.graderias.tudominio.com`
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `192.168.1.100` *(o `graderias_back` si NPM está en la misma red Docker)*
+   - **Forward Port:** `8000`
+   - Activa:
+     - ✅ **Block Common Exploits**
+     - ✅ **Websockets Support**
+3. Pestaña **SSL**:
+   - Solicita certificado SSL con **Force SSL** y **HTTP/2 Support**.
+4. Pestaña **Advanced** (Ajuste de subida de archivos para avatares grandes):
+   Pega lo siguiente:
+   ```nginx
+   client_max_body_size 64M;
+   proxy_read_timeout 300;
+   proxy_connect_timeout 300;
+   proxy_send_timeout 300;
+   ```
+5. Presiona **Save**.
 
-```bash
-npm run dev
-```
-
-O usando el CLI de Quasar:
-
-```bash
-npx quasar dev
-```
-
-El frontend quedará disponible en: **http://localhost:9000**
-
-#### 2.4 Compilar para producción
-
-```bash
-npm run build
-```
-
-O:
-
-```bash
-npx quasar build
-```
-
-El resultado se genera en `front/dist/spa/` y puede publicarse en Nginx, Apache, Netlify, Vercel o cualquier servidor de archivos estáticos.
+¡Listo! Ya puedes ingresar a `https://graderias.tudominio.com` de forma segura con candado SSL.
 
 ---
 
-### 3️⃣ Acceso al sistema
+### 7.3. Escenario B: Despliegue en Red Local (LAN) por IP y Puertos (Sin Dominio)
 
-Con el backend y el frontend en ejecución, abre **http://localhost:9000** e inicia sesión con el usuario creado por el seeder:
+Si vas a operar en una red local cerrada (por ejemplo, en las oficinas de venta del Carnaval de Oruro mediante Wi-Fi o red cableada sin dominio de internet):
 
-| Campo | Valor |
-|---|---|
-| Usuario | `admin` |
-| Contraseña | `admin123Admin` |
+1. Obtén la IP local del servidor donde corre Docker:
+   ```bash
+   hostname -I
+   # Ejemplo: 192.168.1.50
+   ```
+2. Edita `.env` en la raíz del proyecto:
+   ```dotenv
+   FRONTEND_PORT=8080
+   BACKEND_PORT=8000
 
-> Cambia la contraseña desde la opción **Cambiar contraseña** después del primer inicio de sesión.
+   BACKEND_URL=http://192.168.1.50:8000
+   PUBLIC_API_URL=http://192.168.1.50:8000/api
+   PUBLIC_AVATAR_URL=http://192.168.1.50:8000/images
+   ```
+3. Reinicia el frontend:
+   ```bash
+   docker compose restart graderias_front
+   ```
+4. Cualquier dispositivo (computadora, tablet o celular) conectado a la misma red Wi-Fi podrá acceder abriendo:
+   - **Sistema Web:** `http://192.168.1.50:8080`
+   - **API Backend:** `http://192.168.1.50:8000`
 
 ---
 
-### 4️⃣ Arranque rápido (dos terminales)
+### 7.4. Escenario C: Despliegue en un Solo Dominio con Enrutamiento por Ruta (`/api`)
 
-**Terminal 1 — Backend:**
+Si solo tienes **un único dominio** (ej. `graderias.tudominio.com`) y deseas que tanto el frontend como la API compartan el mismo dominio:
 
+1. Configura `.env`:
+   ```dotenv
+   BACKEND_URL=https://graderias.tudominio.com
+   PUBLIC_API_URL=/api
+   PUBLIC_AVATAR_URL=/images
+   ```
+2. Reinicia el contenedor frontend:
+   ```bash
+   docker compose restart graderias_front
+   ```
+3. En Nginx Proxy Manager, crea un solo Proxy Host para `graderias.tudominio.com`:
+   - **Forward IP / Port:** `192.168.1.100` : `8080` (Apunta al frontend).
+4. En la pestaña **Custom Locations** del mismo Proxy Host, añade 3 reglas:
+   - **Location 1:** `/api`
+     - Scheme: `http` | Forward IP: `192.168.1.100` | Port: `8000`
+   - **Location 2:** `/images`
+     - Scheme: `http` | Forward IP: `192.168.1.100` | Port: `8000`
+   - **Location 3:** `/storage`
+     - Scheme: `http` | Forward IP: `192.168.1.100` | Port: `8000`
+5. Guarda los cambios. Esto elimina 100% cualquier posible problema de CORS entre orígenes distintos.
+
+---
+
+## 💻 Ejecución Local en Desarrollo (Sin Docker)
+
+Si deseas trabajar en el código fuente directamente en tu máquina local sin utilizar contenedores:
+
+### Requisitos:
+- PHP 8.2 o superior (probado en PHP 8.4) con extensiones `pdo_mysql`, `mbstring`, `gd`, `zip`, `fileinfo`.
+- Composer 2.x
+- Node.js 20, 22 o 24 LTS
+- Servidor MySQL local activo
+
+---
+
+### 1. Levantar el Backend (Laravel 12):
 ```bash
 cd back
+
+# 1. Instalar dependencias
+composer install
+
+# 2. Configurar variables de entorno
+cp .env.example .env
+# Configura DB_DATABASE, DB_USERNAME y DB_PASSWORD en tu .env
+
+# 3. Generar APP_KEY
+php artisan key:generate
+
+# 4. Migrar y poblar la base de datos
+php artisan migrate --seed
+
+# 5. Enlazar almacenamiento de archivos
+php artisan storage:link
+
+# 6. Iniciar servidor local
 php artisan serve
 ```
-
-**Terminal 2 — Frontend:**
-
-```bash
-cd front
-npm run dev
-```
-
-Luego abre **http://localhost:9000**.
+El backend estará disponible en: **`http://localhost:8000`**.
 
 ---
 
-### 5️⃣ Comandos útiles
-
-| Acción | Backend (`back/`) | Frontend (`front/`) |
-|---|---|---|
-| Instalar dependencias | `composer install` | `npm install` |
-| Ejecutar en desarrollo | `php artisan serve` | `npm run dev` |
-| Compilar producción | — | `npm run build` |
-| Generar `APP_KEY` | `php artisan key:generate` | — |
-| Ejecutar migraciones | `php artisan migrate` | — |
-| Ejecutar seeders | `php artisan db:seed` | — |
-| Migrar + sembrar | `php artisan migrate --seed` | — |
-| Reiniciar base de datos | `php artisan migrate:fresh --seed` | — |
-| Ver rutas de la API | `php artisan route:list` | — |
-| Limpiar cachés | `php artisan optimize:clear` | — |
-| Consola interactiva | `php artisan tinker` | — |
-| Procesar colas | `php artisan queue:work` | — |
-| Ejecutar pruebas | `php artisan test` | `npm test` |
-
----
-
-### 6️⃣ Problemas comunes
-
-| Síntoma | Causa / solución |
-|---|---|
-| `SQLSTATE[HY000] [2002] Connection refused` | MySQL/MariaDB no está iniciado o `DB_HOST`/`DB_PORT` son incorrectos. |
-| `Unknown database 'back_graderias'` | La base no existe o el nombre no coincide con `DB_DATABASE`. |
-| `No application encryption key has been specified` | Ejecuta `php artisan key:generate`. |
-| Error 401 al iniciar sesión | Verifica que el backend esté corriendo y que `VITE_API_BACK` apunte a `http://localhost:8000/api/`. |
-| `Network Error` o error de CORS | Revisa la URL de `VITE_API_BACK`, que el backend escuche en el puerto 8000 y reinicia `npm run dev` después de cambiar el `.env`. |
-| `Permission denied` en `storage` o `bootstrap/cache` | Ejecuta `chmod -R 775 storage bootstrap/cache` (Linux/macOS). |
-| `npm install` falla por la versión de Node | Usa Node.js 20, 22 o 24 LTS y verifica con `node -v`. |
-| `db:seed` falla por registro duplicado | El usuario admin ya existe. Usa `php artisan migrate:fresh --seed` (elimina los datos). |
-| Los cambios en `.env` no se reflejan | Ejecuta `php artisan config:clear` y reinicia el servidor. |
-
----
-
-### 7️⃣ Despliegue en producción (resumen)
-
-#### Backend
-
+### 2. Levantar el Frontend (Angular 21):
 ```bash
-cd back
-composer install --no-dev --optimize-autoloader
-cp .env.example .env
-# Configurar APP_ENV=production, APP_DEBUG=false, APP_URL y credenciales de la BD
-php artisan key:generate
-php artisan migrate --force
-php artisan db:seed --force
-php artisan storage:link
-php artisan optimize
-```
+cd front_ng
 
-Configura el servidor web (Nginx/Apache) para que el **document root** apunte a `back/public`.
-
-#### Frontend
-
-```bash
-cd front
-# Crear .env.production con VITE_API_BACK=https://tu-dominio.com/api/
+# 1. Instalar dependencias
 npm install
-npm run build
+
+# 2. Iniciar servidor de desarrollo de Angular
+npm start
 ```
-
-Publica el contenido de `front/dist/spa/` en tu servidor o plataforma de hosting estático.
-
-#### Colas en producción
-
-```bash
-php artisan queue:work --tries=3
-```
-
-Mantén el worker activo con Supervisor o systemd.
+El frontend estará disponible en: **`http://localhost:4200`** (con recarga en vivo ante cambios en el código).
 
 ---
 
-## 📖 Documentación Extendida
+## 🔑 Credenciales por Defecto y Datos de Prueba
 
-Para consultar el análisis exhaustivo campo por campo, diagramas de secuencia detallados y el diseño de la nueva base de datos para la versión 2.0, revisa el archivo:
-- [📄 detalle_sistema.md](detalle_sistema.md)
+El comando `db:seed` crea automáticamente los siguientes accesos:
+
+### 👑 Usuario Administrador General:
+- **Usuario:** `admin`
+- **Contraseña:** `admin123Admin`
+- **Rol:** `Administrador`
+- **Permisos:** Acceso completo a todos los módulos, ranking de operadores, diseño de graderías, auditoría de ventas y gestión de usuarios.
+
+### 🎫 Usuario Operador de Prueba:
+- **Usuario:** `usuario01`
+- **Contraseña:** `usuario01` *(o la clave configurada en el sistema)*
+- **Rol:** `Usuario` (Operador de Boletería)
+- **Permisos:** Acceso a sus graderías asignadas, consola de venta de butacas, reportes personales y visualización de sus sectores en el mapa.
+
+---
+
+## ❓ Solución de Problemas Frecuentes (FAQ)
+
+### 1. ¿Cómo cambio el tema visual (colores primarios o modo oscuro)?
+El sistema incluye un módulo de personalización en `/personalizacion`. Puedes elegir entre los presets **Aura**, **Lara** y **Nora**, cambiar el color de superficie y activar el modo oscuro.
+
+### 2. Al cambiar la URL del backend en Docker, el frontend sigue llamando a la anterior.
+Ejecuta:
+```bash
+docker compose restart graderias_front
+```
+Y en tu navegador presiona `Ctrl + Shift + R` (o `Cmd + Shift + R` en Mac) para vaciar la memoria caché de scripts.
+
+### 3. Error de CORS en el navegador (`Cross-Origin Request Blocked`).
+Verifica que en `back/config/cors.php` los paths incluyan `'paths' => ['api/*', 'sanctum/csrf-cookie', 'images/*', 'storage/*']` y que `allowed_origins` esté en `['*']`.
+
+### 4. ¿Cómo realizo un respaldo de la base de datos de Docker?
+```bash
+docker compose exec graderias_db mysqldump -u graderias_user -pgraderias_pass back_graderias > backup_graderias_$(date +%Y%m%d).sql
+```
+
+### 5. ¿Cómo restauro un respaldo SQL?
+```bash
+docker compose exec -T graderias_db mysql -u graderias_user -pgraderias_pass back_graderias < backup_graderias_20261113.sql
+```
+
+---
+
+<div align="center">
+  <b>Desarrollado con ❤️ para el Carnaval de Oruro y la gestión profesional de espectáculos masivos.</b>
+</div>

@@ -1,0 +1,634 @@
+<div class="flex flex-col gap-6">
+    <!-- Barra Superior: Filtros Rápidos (Presets) y Exportación -->
+    <div class="card mb-0">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <!-- Presets de Fechas -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-semibold uppercase text-muted-color mr-1">Rango Rápido:</span>
+                <p-button
+                    label="Hoy"
+                    [severity]="presetActivo() === 'hoy' ? 'primary' : 'secondary'"
+                    [outlined]="presetActivo() !== 'hoy'"
+                    [rounded]="true"
+                    size="small"
+                    (click)="aplicarPreset('hoy')"
+                />
+                <p-button
+                    label="Ayer"
+                    [severity]="presetActivo() === 'ayer' ? 'primary' : 'secondary'"
+                    [outlined]="presetActivo() !== 'ayer'"
+                    [rounded]="true"
+                    size="small"
+                    (click)="aplicarPreset('ayer')"
+                />
+                <p-button
+                    label="Últimos 7 días"
+                    [severity]="presetActivo() === '7dias' ? 'primary' : 'secondary'"
+                    [outlined]="presetActivo() !== '7dias'"
+                    [rounded]="true"
+                    size="small"
+                    (click)="aplicarPreset('7dias')"
+                />
+                <p-button
+                    label="Últimos 30 días"
+                    [severity]="presetActivo() === '30dias' ? 'primary' : 'secondary'"
+                    [outlined]="presetActivo() !== '30dias'"
+                    [rounded]="true"
+                    size="small"
+                    (click)="aplicarPreset('30dias')"
+                />
+                <p-button
+                    label="Todo el Carnaval"
+                    [severity]="presetActivo() === 'todo' ? 'primary' : 'secondary'"
+                    [outlined]="presetActivo() !== 'todo'"
+                    [rounded]="true"
+                    size="small"
+                    (click)="aplicarPreset('todo')"
+                />
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <p-button
+                    label="Recargar"
+                    icon="pi pi-refresh"
+                    severity="secondary"
+                    [rounded]="true"
+                    [loading]="store.cargandoDiario()"
+                    (click)="recargar()"
+                />
+                <p-button
+                    label="Exportar Reporte Diario PDF"
+                    icon="pi pi-file-pdf"
+                    severity="danger"
+                    [rounded]="true"
+                    [disabled]="store.cargandoDiario() || !store.reporteDiario()"
+                    (click)="exportarPdf()"
+                />
+            </div>
+        </div>
+
+        <!-- Filtros Personalizados -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
+            <div>
+                <label class="block font-medium text-xs text-surface-900 dark:text-surface-0 mb-1">Fecha Desde</label>
+                <input
+                    type="date"
+                    pInputText
+                    [(ngModel)]="filtroFechaDesde"
+                    (change)="presetActivo.set('todo'); onFiltrar()"
+                    class="w-full text-sm"
+                />
+            </div>
+
+            <div>
+                <label class="block font-medium text-xs text-surface-900 dark:text-surface-0 mb-1">Fecha Hasta</label>
+                <input
+                    type="date"
+                    pInputText
+                    [(ngModel)]="filtroFechaHasta"
+                    (change)="presetActivo.set('todo'); onFiltrar()"
+                    class="w-full text-sm"
+                />
+            </div>
+
+            @if (authStore.esAdmin()) {
+                <div>
+                    <label class="block font-medium text-xs text-surface-900 dark:text-surface-0 mb-1">Filtrar por Operador</label>
+                    <p-select
+                        [options]="store.usuarios()"
+                        [(ngModel)]="filtroUserId"
+                        optionLabel="name"
+                        optionValue="id"
+                        [showClear]="true"
+                        placeholder="Todos los operadores"
+                        class="w-full text-sm"
+                        (onChange)="onFiltrar()"
+                    />
+                </div>
+            }
+
+            <div>
+                <label class="block font-medium text-xs text-surface-900 dark:text-surface-0 mb-1">Filtrar por Gradería</label>
+                <p-select
+                    [options]="store.graderiasFiltro()"
+                    [(ngModel)]="filtroGraderiaId"
+                    optionLabel="nombre"
+                    optionValue="id"
+                    [showClear]="true"
+                    placeholder="Todas las graderías"
+                    class="w-full text-sm"
+                    (onChange)="onFiltrar()"
+                />
+            </div>
+        </div>
+
+        @if (filtroFechaDesde || filtroFechaHasta || filtroUserId || filtroGraderiaId) {
+            <div class="flex justify-end mt-3">
+                <p-button
+                    label="Limpiar Filtros"
+                    icon="pi pi-filter-slash"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    (click)="limpiarFiltros()"
+                />
+            </div>
+        }
+    </div>
+
+    <!-- 4 Tarjetas de Estadísticas KPI del Reporte Diario -->
+    <div class="grid grid-cols-12 gap-6">
+        <!-- 1. Total Recaudado en el Periodo -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-3">
+                    <div>
+                        <span class="block text-muted-color font-medium text-sm mb-1">Total Recaudado</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            Bs. {{ formatMoney(store.totalRecaudadoDiario()) }}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-emerald-100 dark:bg-emerald-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-dollar text-emerald-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div class="text-xs">
+                    <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ store.totalButacasDiario() }} butacas </span>
+                    <span class="text-muted-color">pagadas en el rango</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Días Activos con Venta -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-3">
+                    <div>
+                        <span class="block text-muted-color font-medium text-sm mb-1">Días con Venta</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            {{ store.diasActivosDiario() }}
+                            <span class="text-sm font-normal text-muted-color">días activos</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-calendar text-blue-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div class="text-xs">
+                    <span class="text-primary font-semibold">Bs. {{ formatMoney(store.promedioRecaudacionDiaria()) }} </span>
+                    <span class="text-muted-color">promedio por día</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Día Récord Pico -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-3">
+                    <div>
+                        <span class="block text-muted-color font-medium text-sm mb-1">Día Récord Pico</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-xl">
+                            @if (store.diaPico()) {
+                                Bs. {{ formatMoney(store.diaPico()?.total_recaudado) }}
+                            } @else {
+                                <span>—</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-amber-100 dark:bg-amber-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-chart-bar text-amber-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div class="text-xs">
+                    @if (store.diaPico()) {
+                        <span class="text-amber-600 dark:text-amber-400 font-semibold">{{ store.diaPico()?.fecha }}: </span>
+                        <span class="text-muted-color">{{ store.diaPico()?.total_butacas }} butacas</span>
+                    } @else {
+                        <span class="text-muted-color">Sin ventas en el rango</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Ventas del Día de Hoy -->
+        <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+            <div class="card mb-0 h-full flex flex-col justify-between">
+                <div class="flex justify-between mb-3">
+                    <div>
+                        <span class="block text-muted-color font-medium text-sm mb-1">Recaudación Hoy</span>
+                        <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            Bs. {{ formatMoney(store.ventasHoy()?.total_recaudado) }}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                        <i class="pi pi-bolt text-purple-500 text-xl!"></i>
+                    </div>
+                </div>
+                <div class="text-xs">
+                    <span class="text-purple-600 dark:text-purple-400 font-semibold">{{ store.ventasHoy()?.total_butacas ?? 0 }} butacas </span>
+                    <span class="text-muted-color">vendidas hoy</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selector de Sub-Vista (Por Día vs Por Operador) -->
+    <div class="flex items-center justify-between">
+        <p-selectbutton
+            [options]="modosVistaOpciones"
+            [ngModel]="modoVista()"
+            (ngModelChange)="modoVista.set($event)"
+            optionLabel="label"
+            optionValue="value"
+        >
+            <ng-template #item let-item>
+                <i [class]="item.icon + ' mr-2'"></i>
+                <span class="font-medium">{{ item.label }}</span>
+            </ng-template>
+        </p-selectbutton>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODO 1: EVOLUCIÓN CRONOLÓGICA POR DÍA     -->
+    <!-- ========================================== -->
+    @if (modoVista() === 'dias') {
+        <div class="card mb-0">
+            <div class="font-semibold text-lg text-surface-900 dark:text-surface-0 mb-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="pi pi-calendar-plus text-primary"></i>
+                    <span>Ingresos Diarios de Ventas (Desglose por Fecha)</span>
+                </div>
+                <span class="text-xs font-normal text-muted-color">
+                    Haz clic en <i class="pi pi-chevron-right text-xs"></i> para ver operadores que cobraron cada día
+                </span>
+            </div>
+
+            <p-table
+                [value]="store.diasVenta()"
+                dataKey="fecha"
+                [loading]="store.cargandoDiario()"
+                styleClass="p-datatable-sm"
+                [tableStyle]="{ 'min-width': '60rem' }"
+            >
+                <ng-template #header>
+                    <tr>
+                        <th style="width: 3rem"></th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0">Fecha de Venta</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center">Butacas Vendidas</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center">Operadores Activos</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-right">Recaudación del Día</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center" style="width: 12rem">% del Periodo</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center" style="width: 10rem">Acciones</th>
+                    </tr>
+                </ng-template>
+
+                <ng-template #body let-dia let-expanded="expanded">
+                    <tr class="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
+                        <td>
+                            <p-button
+                                type="button"
+                                pRipple
+                                [pRowToggler]="dia"
+                                [text]="true"
+                                [rounded]="true"
+                                [plain]="true"
+                                [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                                size="small"
+                                pTooltip="Ver operadores de este día"
+                            />
+                        </td>
+                        <td>
+                            <div class="font-bold text-surface-900 dark:text-surface-0 text-base flex items-center gap-2">
+                                <i class="pi pi-calendar text-primary text-sm"></i>
+                                <span>{{ dia.fecha }}</span>
+                            </div>
+                            <span class="text-xs text-muted-color capitalize block mt-0.5">
+                                {{ formatearFechaLarga(dia.fecha) }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30">
+                                <i class="pi pi-ticket text-xs"></i>
+                                {{ dia.total_butacas }} butacas
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-400/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/30">
+                                <i class="pi pi-users text-xs"></i>
+                                {{ dia.operadores_count }} {{ dia.operadores_count === 1 ? 'operador' : 'operadores' }}
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400 text-lg">
+                                Bs. {{ formatMoney(dia.total_recaudado) }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <p-progressbar [value]="dia.porcentaje_del_total || 0" [showValue]="false" styleClass="h-2 flex-1" />
+                                <span class="text-xs font-semibold text-muted-color w-10 text-right">{{ dia.porcentaje_del_total || 0 }}%</span>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <p-button
+                                label="Ver Butacas"
+                                icon="pi pi-list"
+                                severity="primary"
+                                [outlined]="true"
+                                [rounded]="true"
+                                size="small"
+                                (click)="verButacasDia(dia.fecha)"
+                                pTooltip="Ver asientos cobrados en esta fecha"
+                            />
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <!-- Fila Expandida: Desglose por Operador en ese Día -->
+                <ng-template #rowexpansion let-dia>
+                    <tr>
+                        <td colspan="7" class="p-3 bg-surface-50 dark:bg-surface-800/40">
+                            <div class="p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
+                                <div class="font-semibold text-sm text-surface-900 dark:text-surface-0 mb-3 flex items-center gap-2">
+                                    <i class="pi pi-users text-primary text-xs"></i>
+                                    <span>Rendimiento por Operador el día {{ dia.fecha }}</span>
+                                </div>
+
+                                <p-table [value]="dia.operadores" styleClass="p-datatable-sm">
+                                    <ng-template #header>
+                                        <tr>
+                                            <th class="font-semibold text-xs text-muted-color">Operador</th>
+                                            <th class="font-semibold text-xs text-muted-color">Rol</th>
+                                            <th class="font-semibold text-xs text-muted-color text-center">Butacas Vendidas</th>
+                                            <th class="font-semibold text-xs text-muted-color text-right">Monto Recaudado (Bs)</th>
+                                            <th class="font-semibold text-xs text-muted-color text-center">Acción</th>
+                                        </tr>
+                                    </ng-template>
+                                    <ng-template #body let-op>
+                                        <tr>
+                                            <td>
+                                                <div class="flex items-center gap-2">
+                                                    <img
+                                                        [src]="obtenerAvatar(op.avatar)"
+                                                        alt="Avatar"
+                                                        class="w-7 h-7 rounded-full object-cover border border-surface-200 dark:border-surface-700"
+                                                    />
+                                                    <div>
+                                                        <div class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ op.name }}</div>
+                                                        <div class="text-xs text-muted-color">@{{ op.username }}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <p-tag [value]="op.role" [severity]="op.role === 'Administrador' ? 'danger' : 'info'" />
+                                            </td>
+                                            <td class="text-center font-medium text-sm">
+                                                {{ op.total_butacas }} butacas
+                                            </td>
+                                            <td class="text-right font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                                Bs. {{ formatMoney(op.total_recaudado) }}
+                                            </td>
+                                            <td class="text-center">
+                                                <p-button
+                                                    label="Ver Asientos"
+                                                    icon="pi pi-eye"
+                                                    severity="secondary"
+                                                    [text]="true"
+                                                    size="small"
+                                                    (click)="verButacasDia(dia.fecha, op.user_id)"
+                                                />
+                                            </td>
+                                        </tr>
+                                    </ng-template>
+                                </p-table>
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <ng-template #emptymessage>
+                    <tr>
+                        <td colspan="7" class="text-center p-8 text-muted-color">
+                            <i class="pi pi-calendar-times text-4xl mb-3 text-muted-color block"></i>
+                            No hay registros de ventas cobradas para el rango seleccionado.
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <ng-template #footer>
+                    <tr>
+                        <td colspan="2" class="font-bold text-surface-900 dark:text-surface-0 text-right">
+                            Total General del Periodo:
+                        </td>
+                        <td class="text-center font-bold text-surface-900 dark:text-surface-0 text-base">
+                            {{ store.totalButacasDiario() }} butacas
+                        </td>
+                        <td class="text-center font-bold text-surface-900 dark:text-surface-0 text-base">
+                            {{ store.diasActivosDiario() }} días
+                        </td>
+                        <td class="text-right font-bold text-emerald-600 dark:text-emerald-400 text-xl">
+                            Bs. {{ formatMoney(store.totalRecaudadoDiario()) }}
+                        </td>
+                        <td colspan="2"></td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    }
+
+    <!-- ============================================== -->
+    <!-- MODO 2: DESGLOSE Y TOTALES POR OPERADOR        -->
+    <!-- ============================================== -->
+    @if (modoVista() === 'usuarios') {
+        <div class="card mb-0">
+            <div class="font-semibold text-lg text-surface-900 dark:text-surface-0 mb-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="pi pi-users text-primary"></i>
+                    <span>Totales Acumulados y Días por Usuario / Cajero</span>
+                </div>
+                <span class="text-xs font-normal text-muted-color">
+                    Haz clic en <i class="pi pi-chevron-right text-xs"></i> para ver el desglose día por día de cada usuario
+                </span>
+            </div>
+
+            <p-table
+                [value]="store.usuariosDiario()"
+                dataKey="user_id"
+                [loading]="store.cargandoDiario()"
+                styleClass="p-datatable-sm"
+                [tableStyle]="{ 'min-width': '60rem' }"
+            >
+                <ng-template #header>
+                    <tr>
+                        <th style="width: 3rem"></th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0">Operador / Cajero</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center">Butacas Vendidas</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center">Días Activos</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-right">Promedio Diario</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-right">Total Recaudado</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center" style="width: 12rem">% Participación</th>
+                        <th class="font-semibold text-surface-900 dark:text-surface-0 text-center" style="width: 12rem">Acciones</th>
+                    </tr>
+                </ng-template>
+
+                <ng-template #body let-u let-expanded="expanded">
+                    <tr class="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
+                        <td>
+                            <p-button
+                                type="button"
+                                pRipple
+                                [pRowToggler]="u"
+                                [text]="true"
+                                [rounded]="true"
+                                [plain]="true"
+                                [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                                size="small"
+                                pTooltip="Ver días de venta de este usuario"
+                            />
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <img
+                                    [src]="obtenerAvatar(u.avatar)"
+                                    alt="Avatar"
+                                    class="w-10 h-10 rounded-full object-cover border border-surface-200 dark:border-surface-700"
+                                />
+                                <div>
+                                    <div class="font-bold text-surface-900 dark:text-surface-0 text-base">{{ u.name }}</div>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-xs text-muted-color">@{{ u.username }}</span>
+                                        <p-tag [value]="u.role" [severity]="u.role === 'Administrador' ? 'danger' : 'info'" />
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30">
+                                <i class="pi pi-ticket text-xs"></i>
+                                {{ u.total_butacas }}
+                            </span>
+                        </td>
+                        <td class="text-center font-medium text-sm">
+                            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-400/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/30">
+                                <i class="pi pi-calendar text-xs"></i>
+                                {{ u.dias_activos }} {{ u.dias_activos === 1 ? 'día' : 'días' }}
+                            </span>
+                        </td>
+                        <td class="text-right font-medium text-sm text-surface-800 dark:text-surface-200">
+                            Bs. {{ formatMoney(u.promedio_diario) }}
+                        </td>
+                        <td class="text-right">
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400 text-lg">
+                                Bs. {{ formatMoney(u.total_recaudado) }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <p-progressbar [value]="u.porcentaje_del_total || 0" [showValue]="false" styleClass="h-2 flex-1" />
+                                <span class="text-xs font-semibold text-muted-color w-10 text-right">{{ u.porcentaje_del_total || 0 }}%</span>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <p-button
+                                label="Liquidación"
+                                icon="pi pi-file"
+                                severity="secondary"
+                                [outlined]="true"
+                                [rounded]="true"
+                                size="small"
+                                (click)="verDetalleOperador(u.user_id)"
+                                pTooltip="Ver cierre y ficha del operador"
+                            />
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <!-- Fila Expandida: Días de venta de este usuario -->
+                <ng-template #rowexpansion let-u>
+                    <tr>
+                        <td colspan="8" class="p-3 bg-surface-50 dark:bg-surface-800/40">
+                            <div class="p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
+                                <div class="font-semibold text-sm text-surface-900 dark:text-surface-0 mb-3 flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <i class="pi pi-calendar text-primary text-xs"></i>
+                                        <span>Días de Venta de {{ u.name }}</span>
+                                    </div>
+                                    <span class="text-xs text-muted-color">Total: {{ u.dias.length }} fecha(s)</span>
+                                </div>
+
+                                <p-table [value]="u.dias" styleClass="p-datatable-sm">
+                                    <ng-template #header>
+                                        <tr>
+                                            <th class="font-semibold text-xs text-muted-color">Fecha</th>
+                                            <th class="font-semibold text-xs text-muted-color text-center">Butacas Vendidas</th>
+                                            <th class="font-semibold text-xs text-muted-color text-right">Total Recaudado (Bs)</th>
+                                            <th class="font-semibold text-xs text-muted-color text-center">Acciones</th>
+                                        </tr>
+                                    </ng-template>
+                                    <ng-template #body let-dia>
+                                        <tr>
+                                            <td>
+                                                <span class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ dia.fecha }}</span>
+                                                <span class="text-xs text-muted-color block capitalize">{{ formatearFechaLarga(dia.fecha) }}</span>
+                                            </td>
+                                            <td class="text-center font-medium text-sm">
+                                                {{ dia.total_butacas }} butacas
+                                            </td>
+                                            <td class="text-right font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                                Bs. {{ formatMoney(dia.total_recaudado) }}
+                                            </td>
+                                            <td class="text-center">
+                                                <p-button
+                                                    label="Ver Asientos"
+                                                    icon="pi pi-eye"
+                                                    severity="secondary"
+                                                    [text]="true"
+                                                    size="small"
+                                                    (click)="verButacasDia(dia.fecha, u.user_id)"
+                                                />
+                                            </td>
+                                        </tr>
+                                    </ng-template>
+                                </p-table>
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <ng-template #emptymessage>
+                    <tr>
+                        <td colspan="8" class="text-center p-8 text-muted-color">
+                            <i class="pi pi-users text-4xl mb-3 text-muted-color block"></i>
+                            No hay operadores con ventas en el periodo seleccionado.
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <ng-template #footer>
+                    <tr>
+                        <td colspan="2" class="font-bold text-surface-900 dark:text-surface-0 text-right">
+                            Total General Consolidado:
+                        </td>
+                        <td class="text-center font-bold text-surface-900 dark:text-surface-0 text-base">
+                            {{ store.totalButacasDiario() }} butacas
+                        </td>
+                        <td class="text-center font-bold text-surface-900 dark:text-surface-0 text-base">
+                            {{ store.diasActivosDiario() }} días
+                        </td>
+                        <td class="text-right font-bold text-surface-800 dark:text-surface-200 text-base">
+                            Bs. {{ formatMoney(store.promedioRecaudacionDiaria()) }}
+                        </td>
+                        <td class="text-right font-bold text-emerald-600 dark:text-emerald-400 text-xl">
+                            Bs. {{ formatMoney(store.totalRecaudadoDiario()) }}
+                        </td>
+                        <td colspan="2"></td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    }
+
+    <!-- Diálogo Modal para Auditoría de Butacas del Día -->
+    <app-dialog-detalle-dia />
+</div>

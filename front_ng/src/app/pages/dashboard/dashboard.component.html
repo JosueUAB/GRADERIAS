@@ -1,0 +1,973 @@
+<div class="flex flex-col gap-6">
+    <!-- 1. Encabezado Principal y Tarjeta de Identidad -->
+    <div class="card mb-0">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <img
+                    [src]="obtenerAvatar(authStore.usuario()?.avatar)"
+                    alt="Avatar"
+                    class="w-14 h-14 rounded-full object-cover border-2 border-primary shadow-sm"
+                />
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                            ¡Hola, {{ authStore.nombreUsuario() }}!
+                        </span>
+                        @if (authStore.esAdmin()) {
+                            <p-tag value="ADMINISTRADOR GENERAL" severity="danger" styleClass="font-bold text-xs" />
+                        } @else {
+                            <p-tag value="OPERADOR DE BOLETERÍA" severity="info" styleClass="font-bold text-xs" />
+                        }
+                    </div>
+                    <span class="text-muted-color text-sm block mt-0.5">
+                        @if (authStore.esAdmin()) {
+                            Panel de Control Global · Auditoría de recaudación, monitoreo de graderías y métricas generales del Carnaval.
+                        } @else {
+                            Mi Panel de Boletería · Control de recaudación personal, gestión de aforo y ventas en mis sectores.
+                        }
+                    </span>
+                </div>
+            </div>
+
+            <!-- Información Temporal y Acciones de Cabecera -->
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 text-xs font-semibold">
+                    <i class="pi pi-calendar text-primary"></i>
+                    <span class="capitalize">{{ getFechaActualFormateada() }}</span>
+                </div>
+
+                <p-button
+                    icon="pi pi-refresh"
+                    label="Actualizar"
+                    severity="secondary"
+                    [rounded]="true"
+                    [loading]="store.cargando() || store.cargandoDiario() || cargandoGraderias()"
+                    (click)="cargarTodo()"
+                    pTooltip="Recargar métricas en vivo"
+                />
+
+                @if (authStore.esAdmin()) {
+                    <p-button
+                        label="Mapa de Graderías"
+                        icon="pi pi-map-marker"
+                        severity="primary"
+                        [rounded]="true"
+                        routerLink="/graderias/mapa"
+                    />
+                    <p-button
+                        label="Auditoría PDF"
+                        icon="pi pi-file-pdf"
+                        severity="danger"
+                        [rounded]="true"
+                        [outlined]="true"
+                        (click)="exportarConsolidadoPdf()"
+                    />
+                } @else {
+                    <p-button
+                        label="Mis Graderías"
+                        icon="pi pi-th-large"
+                        severity="primary"
+                        [rounded]="true"
+                        routerLink="/graderias"
+                    />
+                    <p-button
+                        label="Diseñar Gradería"
+                        icon="pi pi-plus"
+                        severity="success"
+                        [rounded]="true"
+                        routerLink="/graderias/nueva"
+                    />
+                    <p-button
+                        label="Ver en Mapa"
+                        icon="pi pi-map-marker"
+                        severity="secondary"
+                        [rounded]="true"
+                        [outlined]="true"
+                        routerLink="/graderias/mapa"
+                    />
+                    <p-button
+                        label="Mis Reportes"
+                        icon="pi pi-chart-pie"
+                        severity="help"
+                        [rounded]="true"
+                        [outlined]="true"
+                        (click)="abrirReportesConsolidado()"
+                    />
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- VISTA ADMINISTRADOR: KPIS GLOBALES Y CHEATSHEETS EN TIEMPO REAL          -->
+    <!-- ========================================================================= -->
+    @if (authStore.esAdmin()) {
+        <!-- Título de Sección -->
+        <div class="flex items-center justify-between">
+            <div class="font-bold text-lg text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                <i class="pi pi-globe text-primary"></i>
+                <span>Métricas y KPIs Globales del Carnaval</span>
+            </div>
+            <span class="text-xs text-muted-color">Datos consolidados en tiempo real</span>
+        </div>
+
+        <!-- 6 Tarjetas KPI Globales -->
+        <div class="grid grid-cols-12 gap-4">
+            <!-- 1. Recaudación Global -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-4">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Recaudación Global del Evento</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                Bs. {{ formatMoney(store.totalRecaudadoGlobal()) }}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-emerald-100 dark:bg-emerald-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-dollar text-emerald-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs flex items-center justify-between">
+                        <div>
+                            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ store.totalButacasVendidas() }} butacas </span>
+                            <span class="text-muted-color">cobradas</span>
+                        </div>
+                        <a routerLink="/seguimiento-ventas" class="text-primary font-semibold hover:underline">Ver detalle →</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Ocupación General -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-4">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-2">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Aforo Ocupado del Carnaval</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                {{ store.totalButacasVendidas() }}
+                                <span class="text-sm font-normal text-muted-color">/ {{ store.totalCapacidad() }} butacas</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-ticket text-blue-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <p-progressbar [value]="store.porcentajeOcupacion()" [showValue]="false" styleClass="h-2 mb-1" />
+                        <div class="flex justify-between text-xs font-semibold">
+                            <span class="text-muted-color">Ocupación global</span>
+                            <span class="text-primary font-bold">{{ store.porcentajeOcupacion() }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Ventas de Hoy -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-4">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Ventas Realizadas Hoy</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                Bs. {{ formatMoney(store.ventasHoy()?.total_recaudado) }}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-bolt text-purple-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs">
+                        <span class="text-purple-600 dark:text-purple-400 font-semibold">{{ store.ventasHoy()?.total_butacas ?? 0 }} butacas </span>
+                        <span class="text-muted-color">cobradas en la jornada</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Reservas por Cobrar -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-4">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Por Cobrar (En Reserva)</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                Bs. {{ formatMoney(store.totalReservadoGlobal()) }}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-amber-100 dark:bg-amber-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-clock text-amber-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs">
+                        <span class="text-amber-600 dark:text-amber-400 font-semibold">{{ store.totalButacasReservadas() }} butacas </span>
+                        <span class="text-muted-color">en reserva activa</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Graderías en Operación -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-4">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Graderías en el Circuito</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                {{ store.resumenGlobal()?.total_graderias ?? 0 }}
+                                <span class="text-sm font-normal text-muted-color">sectores</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-cyan-100 dark:bg-cyan-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-th-large text-cyan-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs">
+                        <span class="text-cyan-600 dark:text-cyan-400 font-semibold">{{ store.resumenGlobal()?.total_libres ?? 0 }} butacas libres </span>
+                        <span class="text-muted-color">disponibles</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Operadores en Boletería -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-4">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Cajeros / Operadores</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                {{ store.totalOperadoresConVentas() }}
+                                <span class="text-sm font-normal text-muted-color">con ventas activas</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-indigo-100 dark:bg-indigo-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-users text-indigo-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs">
+                        <span class="text-indigo-600 dark:text-indigo-400 font-semibold">Bs. {{ formatMoney(store.promedioRecaudacionDiaria()) }} </span>
+                        <span class="text-muted-color">promedio por día activo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 1: Ranking de Operadores + Monitor de Graderías -->
+        <div class="grid grid-cols-12 gap-6">
+            <!-- Ranking y Rendimiento de Operadores -->
+            <div class="col-span-12 xl:col-span-7">
+                <div class="card mb-0 h-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="font-bold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                            <i class="pi pi-trophy text-amber-500"></i>
+                            <span>Ranking y Desempeño de Operadores</span>
+                        </div>
+                        <a routerLink="/seguimiento-ventas" class="text-xs text-primary font-semibold hover:underline">
+                            Ver informe completo →
+                        </a>
+                    </div>
+
+                    <p-table [value]="store.rankingOperadores()" styleClass="p-datatable-sm" [rows]="5">
+                        <ng-template #header>
+                            <tr>
+                                <th class="text-xs font-semibold text-muted-color">Operador</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Graderías</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Butacas</th>
+                                <th class="text-xs font-semibold text-muted-color text-right">Recaudación</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Acción</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-u let-i="rowIndex">
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold w-4 text-muted-color">{{ i + 1 }}</span>
+                                        <img
+                                            [src]="obtenerAvatar(u.avatar)"
+                                            alt="Avatar"
+                                            class="w-8 h-8 rounded-full object-cover border border-surface-200 dark:border-surface-700"
+                                        />
+                                        <div>
+                                            <div class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ u.name }}</div>
+                                            <div class="text-xs text-muted-color">@{{ u.username }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center font-medium text-xs">
+                                    <span class="px-2 py-0.5 rounded-md bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300">
+                                        {{ u.graderias_count }} sectores
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                        {{ u.total_pagados }} butacas
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                        Bs. {{ formatMoney(u.total_recaudado) }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <p-button
+                                        icon="pi pi-file"
+                                        severity="secondary"
+                                        [text]="true"
+                                        [rounded]="true"
+                                        size="small"
+                                        (click)="abrirDetalleOperador(u.id)"
+                                        pTooltip="Ver liquidación del operador"
+                                    />
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+
+            <!-- Monitor de Ocupación por Gradería -->
+            <div class="col-span-12 xl:col-span-5">
+                <div class="card mb-0 h-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="font-bold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                            <i class="pi pi-chart-bar text-primary"></i>
+                            <span>Monitor de Sectores y Graderías</span>
+                        </div>
+                        <a routerLink="/graderias" class="text-xs text-primary font-semibold hover:underline">
+                            Ver graderías →
+                        </a>
+                    </div>
+
+                    <p-table [value]="misGraderias()" styleClass="p-datatable-sm" [rows]="5">
+                        <ng-template #header>
+                            <tr>
+                                <th class="text-xs font-semibold text-muted-color">Gradería</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Aforo</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Estado</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Acciones</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-g>
+                            <tr>
+                                <td>
+                                    <div class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ g.nombre }}</div>
+                                    <span class="text-xs text-muted-color">{{ g.direccion || 'Sin dirección' }}</span>
+                                </td>
+                                <td class="text-center font-medium text-xs">
+                                    {{ g.capacidad_total }} butacas
+                                </td>
+                                <td class="text-center">
+                                    <p-tag [value]="g.activo ? 'ACTIVO' : 'INACTIVO'" [severity]="g.activo ? 'success' : 'danger'" styleClass="text-xs" />
+                                </td>
+                                <td class="text-center">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <p-button
+                                            icon="pi pi-ticket"
+                                            severity="success"
+                                            [rounded]="true"
+                                            size="small"
+                                            [routerLink]="['/graderias', g.id, 'venta']"
+                                            pTooltip="Boletería"
+                                        />
+                                        <p-button
+                                            icon="pi pi-chart-pie"
+                                            severity="help"
+                                            [rounded]="true"
+                                            [text]="true"
+                                            size="small"
+                                            (click)="abrirReporteGraderia(g)"
+                                            pTooltip="Reportes del sector"
+                                        />
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 2: Evolución Diaria + Últimos Cobros en Vivo -->
+        <div class="grid grid-cols-12 gap-6">
+            <!-- Evolución Diaria de Ventas -->
+            <div class="col-span-12 xl:col-span-6">
+                <div class="card mb-0 h-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="font-bold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                            <i class="pi pi-calendar-clock text-primary"></i>
+                            <span>Evolución Diaria de Recaudación</span>
+                        </div>
+                        @if (store.diaPico()) {
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30">
+                                Récord: {{ store.diaPico()?.fecha }} (Bs. {{ formatMoney(store.diaPico()?.total_recaudado) }})
+                            </span>
+                        }
+                    </div>
+
+                    <p-table [value]="store.diasVenta()" styleClass="p-datatable-sm" [rows]="5">
+                        <ng-template #header>
+                            <tr>
+                                <th class="text-xs font-semibold text-muted-color">Fecha</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Butacas</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Cajeros</th>
+                                <th class="text-xs font-semibold text-muted-color text-right">Recaudado</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Detalle</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-dia>
+                            <tr>
+                                <td>
+                                    <span class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ dia.fecha }}</span>
+                                    <span class="text-xs text-muted-color block capitalize">{{ formatearFechaLarga(dia.fecha) }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400">
+                                        {{ dia.total_butacas }}
+                                    </span>
+                                </td>
+                                <td class="text-center font-medium text-xs">
+                                    {{ dia.operadores_count }} {{ dia.operadores_count === 1 ? 'cajero' : 'cajeros' }}
+                                </td>
+                                <td class="text-right">
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                        Bs. {{ formatMoney(dia.total_recaudado) }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <p-button
+                                        icon="pi pi-list"
+                                        severity="primary"
+                                        [text]="true"
+                                        [rounded]="true"
+                                        size="small"
+                                        (click)="abrirDetalleDia(dia.fecha)"
+                                        pTooltip="Ver asientos cobrados"
+                                    />
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+
+            <!-- Auditoría en Vivo (Últimos Cobros Realizados) -->
+            <div class="col-span-12 xl:col-span-6">
+                <div class="card mb-0 h-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="font-bold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                            <i class="pi pi-history text-primary"></i>
+                            <span>Últimos Cobros en Vivo</span>
+                        </div>
+                        <span class="text-xs text-muted-color">Auditoría en tiempo real</span>
+                    </div>
+
+                    <p-table [value]="store.auditoriaAsientos().slice(0, 5)" styleClass="p-datatable-sm">
+                        <ng-template #header>
+                            <tr>
+                                <th class="text-xs font-semibold text-muted-color">Asiento</th>
+                                <th class="text-xs font-semibold text-muted-color">Gradería</th>
+                                <th class="text-xs font-semibold text-muted-color">Cliente</th>
+                                <th class="text-xs font-semibold text-muted-color text-right">Monto</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">WhatsApp</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-a>
+                            <tr>
+                                <td>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                                        {{ a.codigo }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-xs font-medium text-surface-900 dark:text-surface-0">{{ a.graderia_nombre }}</span>
+                                    <span class="text-xs text-muted-color block">Por: {{ a.operador_nombre }}</span>
+                                </td>
+                                <td>
+                                    <span class="text-xs font-medium text-surface-800 dark:text-surface-200">
+                                        {{ a.cliente_nombre || 'Sin nombre' }}
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                                        Bs. {{ formatMoney(a.monto) }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (a.cliente_celular) {
+                                        <p-button
+                                            icon="pi pi-whatsapp"
+                                            severity="success"
+                                            [text]="true"
+                                            [rounded]="true"
+                                            size="small"
+                                            (click)="abrirWhatsApp(a.cliente_celular, a.cliente_nombre, a.codigo)"
+                                            pTooltip="WhatsApp"
+                                        />
+                                    } @else {
+                                        <span class="text-muted-color text-xs">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accesos Rápidos del Administrador -->
+        <div class="card mb-0">
+            <div class="font-bold text-base text-surface-900 dark:text-surface-0 mb-4 flex items-center gap-2">
+                <i class="pi pi-bolt text-amber-500"></i>
+                <span>Accesos Rápidos y Operaciones Globales</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                <button
+                    routerLink="/graderias/mapa"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <i class="pi pi-map-marker text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Mapa de Graderías</span>
+                </button>
+
+                <button
+                    routerLink="/seguimiento-ventas"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                        <i class="pi pi-chart-line text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Seguimiento de Ventas</span>
+                </button>
+
+                <button
+                    routerLink="/graderias/nueva"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                        <i class="pi pi-plus text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Diseñar Gradería</span>
+                </button>
+
+                <button
+                    routerLink="/usuarios"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                        <i class="pi pi-users text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Gestión de Usuarios</span>
+                </button>
+
+                <button
+                    (click)="exportarConsolidadoPdf()"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer col-span-2 sm:col-span-1"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
+                        <i class="pi pi-file-pdf text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Exportar PDF General</span>
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- ========================================================================= -->
+    <!-- VISTA USUARIO / OPERADOR: PARÁMETROS PERSONALES Y GESTIÓN DIRECTA         -->
+    <!-- ========================================================================= -->
+    @if (!authStore.esAdmin()) {
+        <!-- Título de Sección -->
+        <div class="flex items-center justify-between">
+            <div class="font-bold text-lg text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                <i class="pi pi-user text-primary"></i>
+                <span>Mi Panel de Boletería y Ventas Asignadas</span>
+            </div>
+            <span class="text-xs text-muted-color">Visualizando tus propios sectores y parámetros</span>
+        </div>
+
+        <!-- 4 Tarjetas KPI Personales del Operador -->
+        <div class="grid grid-cols-12 gap-4">
+            <!-- 1. Mi Recaudación Acumulada -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Mi Recaudación Acumulada</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                Bs. {{ formatMoney(store.totalRecaudadoGlobal()) }}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-emerald-100 dark:bg-emerald-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-dollar text-emerald-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs">
+                        <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ store.totalButacasVendidas() }} butacas </span>
+                        <span class="text-muted-color">cobradas en mis sectores</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Ocupación de Mis Graderías -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-2">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Ocupación de Mis Graderías</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                {{ store.totalButacasVendidas() }}
+                                <span class="text-sm font-normal text-muted-color">/ {{ store.totalCapacidad() }} aforo</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-ticket text-blue-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <p-progressbar [value]="store.porcentajeOcupacion()" [showValue]="false" styleClass="h-2 mb-1" />
+                        <div class="flex justify-between text-xs font-semibold">
+                            <span class="text-muted-color">Aforo comprometido</span>
+                            <span class="text-primary font-bold">{{ store.porcentajeOcupacion() }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Mis Ventas de Hoy -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Mis Cobros de Hoy</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                Bs. {{ formatMoney(store.ventasHoy()?.total_recaudado) }}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-bolt text-purple-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs">
+                        <span class="text-purple-600 dark:text-purple-400 font-semibold">{{ store.ventasHoy()?.total_butacas ?? 0 }} butacas </span>
+                        <span class="text-muted-color">cobradas hoy</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Por Cobrar en Mis Graderías -->
+            <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                <div class="card mb-0 h-full flex flex-col justify-between">
+                    <div class="flex justify-between mb-3">
+                        <div>
+                            <span class="block text-muted-color font-medium text-xs mb-1">Por Cobrar (Reservas)</span>
+                            <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                Bs. {{ formatMoney(store.totalReservadoGlobal()) }}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center bg-amber-100 dark:bg-amber-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                            <i class="pi pi-clock text-amber-500 text-xl!"></i>
+                        </div>
+                    </div>
+                    <div class="text-xs">
+                        <span class="text-amber-600 dark:text-amber-400 font-semibold">{{ store.totalButacasReservadas() }} butacas </span>
+                        <span class="text-muted-color">pendientes en mis sectores</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 1 del Operador: Mis Graderías Asignadas + Mis Últimos Cobros -->
+        <div class="grid grid-cols-12 gap-6">
+            <!-- Mis Graderías Asignadas -->
+            <div class="col-span-12 xl:col-span-7">
+                <div class="card mb-0 h-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="font-bold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                            <i class="pi pi-th-large text-primary"></i>
+                            <span>Mis Graderías Asignadas</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-muted-color">{{ misGraderias().length }} sectores a mi cargo</span>
+                            <a routerLink="/graderias" class="text-xs text-primary font-semibold hover:underline">
+                                Ver todas mis graderías →
+                            </a>
+                        </div>
+                    </div>
+
+                    <p-table [value]="misGraderias()" styleClass="p-datatable-sm">
+                        <ng-template #header>
+                            <tr>
+                                <th class="text-xs font-semibold text-muted-color">Gradería</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Aforo</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Estado</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">Operación</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-g>
+                            <tr>
+                                <td>
+                                    <div class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ g.nombre }}</div>
+                                    <span class="text-xs text-muted-color">{{ g.direccion || 'Sin dirección' }}</span>
+                                </td>
+                                <td class="text-center font-medium text-xs">
+                                    {{ g.capacidad_total }} butacas
+                                </td>
+                                <td class="text-center">
+                                    <p-tag [value]="g.activo ? 'DISPONIBLE' : 'INACTIVA'" [severity]="g.activo ? 'success' : 'danger'" styleClass="text-xs" />
+                                </td>
+                                <td class="text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <p-button
+                                            label="Boletería"
+                                            icon="pi pi-ticket"
+                                            severity="success"
+                                            [rounded]="true"
+                                            size="small"
+                                            [routerLink]="['/graderias', g.id, 'venta']"
+                                            pTooltip="Abrir venta de asientos"
+                                        />
+                                        <p-button
+                                            icon="pi pi-chart-pie"
+                                            severity="help"
+                                            [rounded]="true"
+                                            [text]="true"
+                                            size="small"
+                                            (click)="abrirReporteGraderia(g)"
+                                            pTooltip="Ver reportes financieros de esta gradería"
+                                        />
+                                        <p-button
+                                            icon="pi pi-link"
+                                            severity="secondary"
+                                            [rounded]="true"
+                                            [text]="true"
+                                            size="small"
+                                            (click)="copiarLinkPublico(g.code)"
+                                            pTooltip="Copiar enlace público"
+                                        />
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #emptymessage>
+                            <tr>
+                                <td colspan="4" class="text-center p-6 text-muted-color">
+                                    No tienes graderías asignadas actualmente.
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+
+            <!-- Mis Últimos Cobros Realizados -->
+            <div class="col-span-12 xl:col-span-5">
+                <div class="card mb-0 h-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="font-bold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                            <i class="pi pi-history text-primary"></i>
+                            <span>Mis Últimos Cobros</span>
+                        </div>
+                        <span class="text-xs text-muted-color">Actividad reciente</span>
+                    </div>
+
+                    <p-table [value]="store.auditoriaAsientos().slice(0, 5)" styleClass="p-datatable-sm">
+                        <ng-template #header>
+                            <tr>
+                                <th class="text-xs font-semibold text-muted-color">Asiento</th>
+                                <th class="text-xs font-semibold text-muted-color">Cliente</th>
+                                <th class="text-xs font-semibold text-muted-color text-right">Monto</th>
+                                <th class="text-xs font-semibold text-muted-color text-center">WhatsApp</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-a>
+                            <tr>
+                                <td>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                                        {{ a.codigo }}
+                                    </span>
+                                    <span class="text-xs text-muted-color block">{{ a.graderia_nombre }}</span>
+                                </td>
+                                <td>
+                                    <span class="text-xs font-medium text-surface-800 dark:text-surface-200">
+                                        {{ a.cliente_nombre || 'Sin nombre' }}
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                                        Bs. {{ formatMoney(a.monto) }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (a.cliente_celular) {
+                                        <p-button
+                                            icon="pi pi-whatsapp"
+                                            severity="success"
+                                            [text]="true"
+                                            [rounded]="true"
+                                            size="small"
+                                            (click)="abrirWhatsApp(a.cliente_celular, a.cliente_nombre, a.codigo)"
+                                            pTooltip="WhatsApp"
+                                        />
+                                    } @else {
+                                        <span class="text-muted-color text-xs">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #emptymessage>
+                            <tr>
+                                <td colspan="4" class="text-center p-6 text-muted-color">
+                                    Aún no has registrado cobros.
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mi Rendimiento Diario -->
+        <div class="card mb-0">
+            <div class="flex items-center justify-between mb-4">
+                <div class="font-bold text-base text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                    <i class="pi pi-calendar text-primary"></i>
+                    <span>Evolución Diaria de Mis Cobros</span>
+                </div>
+                <p-button
+                    label="Ver Reporte Completo"
+                    icon="pi pi-chart-pie"
+                    severity="help"
+                    [rounded]="true"
+                    [text]="true"
+                    size="small"
+                    (click)="abrirReportesConsolidado()"
+                />
+            </div>
+
+            <p-table [value]="store.diasVenta()" styleClass="p-datatable-sm">
+                <ng-template #header>
+                    <tr>
+                        <th class="text-xs font-semibold text-muted-color">Fecha de Venta</th>
+                        <th class="text-xs font-semibold text-muted-color text-center">Butacas Cobradas</th>
+                        <th class="text-xs font-semibold text-muted-color text-right">Total Recaudado (Bs)</th>
+                        <th class="text-xs font-semibold text-muted-color text-center">Detalle</th>
+                    </tr>
+                </ng-template>
+
+                <ng-template #body let-dia>
+                    <tr>
+                        <td>
+                            <span class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ dia.fecha }}</span>
+                            <span class="text-xs text-muted-color block capitalize">{{ formatearFechaLarga(dia.fecha) }}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400">
+                                {{ dia.total_butacas }} butacas
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                Bs. {{ formatMoney(dia.total_recaudado) }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <p-button
+                                icon="pi pi-list"
+                                severity="primary"
+                                [text]="true"
+                                [rounded]="true"
+                                size="small"
+                                (click)="abrirDetalleDia(dia.fecha)"
+                                pTooltip="Ver asientos de este día"
+                            />
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <ng-template #emptymessage>
+                    <tr>
+                        <td colspan="4" class="text-center p-6 text-muted-color">
+                            No se registran cobros en los últimos días.
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+
+        <!-- Accesos Rápidos del Operador -->
+        <div class="card mb-0">
+            <div class="font-bold text-base text-surface-900 dark:text-surface-0 mb-4 flex items-center gap-2">
+                <i class="pi pi-bolt text-amber-500"></i>
+                <span>Accesos Rápidos del Operador</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <button
+                    routerLink="/graderias"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <i class="pi pi-th-large text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Mis Graderías</span>
+                </button>
+
+                <button
+                    routerLink="/graderias/nueva"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                        <i class="pi pi-plus text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Diseñar Gradería</span>
+                </button>
+
+                <button
+                    routerLink="/graderias/mapa"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                        <i class="pi pi-map-marker text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Mapa de Graderías</span>
+                </button>
+
+                <button
+                    (click)="abrirReportesConsolidado()"
+                    class="p-4 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/40 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer"
+                >
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                        <i class="pi pi-chart-pie text-xl"></i>
+                    </div>
+                    <span class="font-semibold text-xs text-surface-900 dark:text-surface-0">Mis Reportes</span>
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- ========================================================================= -->
+    <!-- MODALES GLOBALES INTEGRADOS EN EL PANEL PRINCIPAL                         -->
+    <!-- ========================================================================= -->
+
+    <!-- Modal Detalle y Cierre de Operador (para Administrador) -->
+    <app-dialog-detalle-operador />
+
+    <!-- Modal Detalle de Asientos de una Fecha -->
+    <app-dialog-detalle-dia />
+
+    <!-- Modal de Reportes Financieros de Gradería (Individual y Consolidado) -->
+    <app-graderia-reportes-dialog
+        [visible]="modalReportesVisible()"
+        [graderiaActual]="graderiaSeleccionadaReporte()"
+        [asientosGraderiaActual]="asientosSeleccionadosReporte()"
+        (onClose)="modalReportesVisible.set(false)"
+    />
+</div>

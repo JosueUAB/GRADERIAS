@@ -6,7 +6,8 @@ import { Asiento } from '../interfaces/asiento.interface';
 import {
     ResumenGlobalVentas,
     UsuarioVentaStat,
-    DetalleUsuarioVentasResponse
+    DetalleUsuarioVentasResponse,
+    ReporteDiarioResponse
 } from '../interfaces/seguimiento-ventas.interface';
 
 export interface ClienteAgrupado {
@@ -525,6 +526,539 @@ export class ReportePdfService {
 
         if (descargar) {
             const filename = `cierre_ventas_${u.username}_${Date.now()}.pdf`;
+            doc.save(filename);
+        }
+
+        return doc;
+    }
+
+    /**
+     * Genera el Reporte de Ingresos Diarios y Totales por Usuario en PDF.
+     */
+    generarPdfReporteDiario(
+        reporte: ReporteDiarioResponse,
+        rangoFechas: string,
+        supervisor: string,
+        descargar: boolean = true
+    ): jsPDF {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+        const now = this.fmtDateTime(new Date());
+        const res = reporte.resumen;
+
+        // Banda superior decorativa
+        doc.setFillColor(150, 0, 35);
+        doc.rect(40, 30, 532, 5, 'F');
+
+        // Título del documento
+        doc.setFontSize(15);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text('REPORTE DE INGRESOS DIARIOS Y TOTALES POR USUARIO', 40, 56);
+
+        // Subtítulo e información de contexto
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Periodo Auditado: ${rangoFechas || 'Histórico General'}   |   Emisión: ${now}`, 40, 72);
+        doc.text(`Generado por: ${this.safe(supervisor) || 'Administración Central'}   |   Sistema Carnaval de Graderías`, 40, 85);
+
+        // 4 Cajas KPI de Resumen
+        const startY = 100;
+        const boxW = 125;
+        const boxH = 44;
+        const boxes = [
+            { label: 'TOTAL RECAUDADO', val: `Bs. ${this.money(res.total_recaudado)}`, col: [236, 253, 245], textCol: [5, 150, 105] },
+            { label: 'TOTAL BUTACAS', val: `${res.total_butacas} vendidas`, col: [239, 246, 255], textCol: [37, 99, 235] },
+            { label: 'PROMEDIO DIARIO', val: `Bs. ${this.money(res.promedio_diario)} / día`, col: [245, 243, 255], textCol: [109, 40, 217] },
+            {
+                label: 'DÍA RÉCORD PICO',
+                val: res.dia_pico ? `${res.dia_pico.fecha} (Bs. ${this.money(res.dia_pico.total_recaudado)})` : 'N/A',
+                col: [254, 243, 199],
+                textCol: [217, 119, 6]
+            }
+        ];
+
+        boxes.forEach((b, idx) => {
+            const bx = 40 + idx * (boxW + 10);
+            doc.setFillColor(b.col[0], b.col[1], b.col[2]);
+            doc.roundedRect(bx, startY, boxW, boxH, 4, 4, 'F');
+
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(100, 116, 139);
+            doc.text(b.label, bx + 8, startY + 14);
+
+            doc.setFontSize(9.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(b.textCol[0], b.textCol[1], b.textCol[2]);
+            doc.text(b.val, bx + 8, startY + 31);
+        });
+
+        // TÍTULO TABLA 1: Desglose por Día
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('1. Evolución Cronológica de Ingresos Diarios', 40, 168);
+
+        const headDias = [['#', 'Fecha de Venta', 'Butacas Vendidas', 'Operadores Activos', 'Total Recaudado', '% del Total']];
+        const bodyDias = reporte.dias.map((d, i) => [
+            String(i + 1),
+            d.fecha,
+            `${d.total_butacas} butacas`,
+            `${d.operadores_count} cajero(s)`,
+            `Bs. ${this.money(d.total_recaudado)}`,
+            `${d.porcentaje_del_total ?? 0}%`
+        ]);
+
+        const footDias = [['', 'TOTAL ACUMULADO DIARIO', `${res.total_butacas} butacas`, `${reporte.dias.length} días con venta`, `Bs. ${this.money(res.total_recaudado)}`, '100%']];
+
+        autoTable(doc, {
+            head: headDias,
+            body: bodyDias,
+            foot: footDias,
+            startY: 178,
+            theme: 'striped',
+            styles: { fontSize: 8.5, cellPadding: 4.5, textColor: [30, 41, 59] },
+            headStyles: { fillColor: [150, 0, 35], textColor: [255, 255, 255], fontStyle: 'bold' },
+            footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 25 },
+                1: { cellWidth: 120 },
+                2: { halign: 'center', cellWidth: 95 },
+                3: { halign: 'center', cellWidth: 100 },
+                4: { halign: 'right', cellWidth: 110 },
+                5: { halign: 'center', cellWidth: 82 }
+            },
+            margin: { left: 40, right: 40 }
+        });
+
+        // TÍTULO TABLA 2: Desglose por Operador
+        let tabla1FinalY = (doc as any).lastAutoTable?.finalY || 350;
+        if (tabla1FinalY > 520) {
+            doc.addPage();
+            tabla1FinalY = 40;
+        }
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('2. Recaudación Consolidada y Totales por Usuario / Operador', 40, tabla1FinalY + 28);
+
+        const headUsers = [['#', 'Operador / Cajero', 'Rol', 'Butacas', 'Días Activos', 'Promedio/Día', 'Total Recaudado', '% Part.']];
+        const bodyUsers = reporte.usuarios.map((u, i) => [
+            String(i + 1),
+            `${this.safe(u.name)} (${this.safe(u.username)})`,
+            this.safe(u.role),
+            `${u.total_butacas}`,
+            `${u.dias_activos} días`,
+            `Bs. ${this.money(u.promedio_diario)}`,
+            `Bs. ${this.money(u.total_recaudado)}`,
+            `${u.porcentaje_del_total ?? 0}%`
+        ]);
+
+        const footUsers = [['', 'TOTAL CONSOLIDADO', '', `${res.total_butacas} butacas`, `${res.dias_activos} días`, `Bs. ${this.money(res.promedio_diario)}`, `Bs. ${this.money(res.total_recaudado)}`, '100%']];
+
+        autoTable(doc, {
+            head: headUsers,
+            body: bodyUsers,
+            foot: footUsers,
+            startY: tabla1FinalY + 38,
+            theme: 'striped',
+            styles: { fontSize: 8.5, cellPadding: 4.5, textColor: [30, 41, 59] },
+            headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+            footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 25 },
+                1: { cellWidth: 120 },
+                2: { cellWidth: 65 },
+                3: { halign: 'center', cellWidth: 55 },
+                4: { halign: 'center', cellWidth: 65 },
+                5: { halign: 'right', cellWidth: 70 },
+                6: { halign: 'right', cellWidth: 80 },
+                7: { halign: 'center', cellWidth: 52 }
+            },
+            margin: { left: 40, right: 40 },
+            didDrawPage: (data) => {
+                const pageCount = doc.getNumberOfPages();
+                doc.setFontSize(8);
+                doc.setTextColor(140, 140, 140);
+                doc.text(`Página ${data.pageNumber} de ${pageCount}`, doc.internal.pageSize.getWidth() - 95, doc.internal.pageSize.getHeight() - 15);
+            }
+        });
+
+        // Firmas al pie
+        let finalY = (doc as any).lastAutoTable?.finalY || 500;
+        if (finalY > 640) {
+            doc.addPage();
+            finalY = 60;
+        }
+
+        const signY = finalY + 55;
+        doc.setDrawColor(180, 180, 180);
+        doc.line(70, signY, 230, signY);
+        doc.line(350, signY, 510, signY);
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text('Control y Arqueo de Ventas', 85, signY + 14);
+        doc.text('Firma Recibido Conforme / Dirección', 355, signY + 14);
+
+        if (descargar) {
+            const filename = `reporte_ingresos_diarios_${Date.now()}.pdf`;
+            doc.save(filename);
+        }
+
+        return doc;
+    }
+
+    /**
+     * Genera el Reporte de Ventas y Finanzas de una Gradería Individual.
+     */
+    generarPdfReporteGraderiaIndividual(
+        graderia: Graderia,
+        asientos: Asiento[],
+        reporteDiario: ReporteDiarioResponse | null,
+        usuario: string,
+        descargar: boolean = true
+    ): jsPDF {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+        const now = this.fmtDateTime(new Date());
+
+        // Conteos y recaudación
+        const pagados = asientos.filter(a => a.estado === 'PAGADO');
+        const reservados = asientos.filter(a => a.estado === 'RESERVADO');
+        const libres = asientos.filter(a => a.estado === 'LIBRE');
+        const totalRecaudado = pagados.reduce((acc, a) => acc + (Number(a.monto) || 0), 0);
+        const totalReservado = reservados.reduce((acc, a) => acc + (Number(a.monto) || 0), 0);
+        const ocupacionPct = asientos.length > 0 ? Math.round(((pagados.length + reservados.length) / asientos.length) * 100) : 0;
+
+        // Banda superior decorativa
+        doc.setFillColor(150, 0, 35);
+        doc.rect(40, 30, 532, 5, 'F');
+
+        // Encabezado
+        doc.setFontSize(15);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text(`REPORTE DE VENTAS: ${this.safe(graderia.nombre).toUpperCase()}`, 40, 56);
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Dirección: ${this.safe(graderia.direccion) || 'No especificada'}   |   Dimensiones: ${graderia.filas} Filas x ${graderia.columnas} Columnas (${asientos.length} Butacas)`, 40, 72);
+        doc.text(`Operador / Encargado: ${this.safe(usuario) || 'Administración'}   |   Emisión: ${now}`, 40, 85);
+
+        // 4 Cajas KPI de Resumen Financiero
+        const startY = 100;
+        const boxW = 125;
+        const boxH = 44;
+        const boxes = [
+            { label: 'TOTAL RECAUDADO', val: `Bs. ${this.money(totalRecaudado)}`, col: [236, 253, 245], textCol: [5, 150, 105] },
+            { label: 'BUTACAS PAGADAS', val: `${pagados.length} / ${asientos.length} (${ocupacionPct}%)`, col: [239, 246, 255], textCol: [37, 99, 235] },
+            { label: 'EN RESERVA', val: `${reservados.length} (Bs. ${this.money(totalReservado)})`, col: [254, 243, 199], textCol: [217, 119, 6] },
+            { label: 'DISPONIBILIDAD', val: `${libres.length} butacas libres`, col: [243, 244, 246], textCol: [75, 85, 99] }
+        ];
+
+        boxes.forEach((b, idx) => {
+            const bx = 40 + idx * (boxW + 10);
+            doc.setFillColor(b.col[0], b.col[1], b.col[2]);
+            doc.roundedRect(bx, startY, boxW, boxH, 4, 4, 'F');
+
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(100, 116, 139);
+            doc.text(b.label, bx + 8, startY + 14);
+
+            doc.setFontSize(9.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(b.textCol[0], b.textCol[1], b.textCol[2]);
+            doc.text(b.val, bx + 8, startY + 31);
+        });
+
+        let currentY = 165;
+
+        // Tabla 1: Evolución Diaria de Cobros de esta gradería (si existen registros)
+        if (reporteDiario && reporteDiario.dias && reporteDiario.dias.length > 0) {
+            doc.setFontSize(10.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            doc.text('1. Evolución Diaria de Ingresos de esta Gradería', 40, currentY);
+
+            const headDias = [['#', 'Fecha', 'Butacas Vendidas', 'Total Cobrado (Bs)', '% de la Gradería']];
+            const bodyDias = reporteDiario.dias.map((d, i) => [
+                String(i + 1),
+                d.fecha,
+                `${d.total_butacas} butacas`,
+                `Bs. ${this.money(d.total_recaudado)}`,
+                totalRecaudado > 0 ? `${Math.round((d.total_recaudado / totalRecaudado) * 100)}%` : '0%'
+            ]);
+
+            autoTable(doc, {
+                head: headDias,
+                body: bodyDias,
+                startY: currentY + 10,
+                theme: 'striped',
+                styles: { fontSize: 8.5, cellPadding: 4, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [150, 0, 35], textColor: [255, 255, 255], fontStyle: 'bold' },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 25 },
+                    1: { cellWidth: 140 },
+                    2: { halign: 'center', cellWidth: 120 },
+                    3: { halign: 'right', cellWidth: 130 },
+                    4: { halign: 'center', cellWidth: 117 }
+                },
+                margin: { left: 40, right: 40 }
+            });
+
+            currentY = (doc as any).lastAutoTable?.finalY + 25;
+        }
+
+        // Tabla 2: Listado de Butacas Pagadas de la Gradería
+        if (currentY > 520) {
+            doc.addPage();
+            currentY = 40;
+        }
+
+        doc.setFontSize(10.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('2. Detalle de Butacas Pagadas y Clientes', 40, currentY);
+
+        const pagadosOrdenados = this.sortSeatsByCodigo(pagados);
+        const headAsientos = [['#', 'Asiento', 'Fila/Col', 'Cliente', 'Celular', 'Monto (Bs)', 'Fecha / Hora']];
+        const bodyAsientos = pagadosOrdenados.map((a, i) => [
+            String(i + 1),
+            this.safe(a.codigo),
+            `F${a.fila} C${a.columna}`,
+            this.safe(a.cliente_nombre) || 'Sin nombre',
+            this.safe(a.cliente_celular) || 'S/N',
+            `Bs. ${this.money(Number(a.monto) || 0)}`,
+            this.fmtDateTime(a.pagado_at || a.updated_at)
+        ]);
+
+        const footAsientos = [['', 'TOTAL COBRADO', '', '', `${pagados.length} butacas`, `Bs. ${this.money(totalRecaudado)}`, '']];
+
+        autoTable(doc, {
+            head: headAsientos,
+            body: bodyAsientos,
+            foot: footAsientos,
+            startY: currentY + 10,
+            theme: 'striped',
+            styles: { fontSize: 8, cellPadding: 3.5, textColor: [30, 41, 59] },
+            headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+            footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 25 },
+                1: { halign: 'center', cellWidth: 50 },
+                2: { halign: 'center', cellWidth: 55 },
+                3: { cellWidth: 150 },
+                4: { halign: 'center', cellWidth: 70 },
+                5: { halign: 'right', cellWidth: 80 },
+                6: { halign: 'center', cellWidth: 102 }
+            },
+            margin: { left: 40, right: 40 },
+            didDrawPage: (data) => {
+                const pageCount = doc.getNumberOfPages();
+                doc.setFontSize(8);
+                doc.setTextColor(140, 140, 140);
+                doc.text(`Página ${data.pageNumber} de ${pageCount}`, doc.internal.pageSize.getWidth() - 95, doc.internal.pageSize.getHeight() - 15);
+            }
+        });
+
+        // Firmas
+        let finalY = (doc as any).lastAutoTable?.finalY || 500;
+        if (finalY > 640) {
+            doc.addPage();
+            finalY = 60;
+        }
+
+        const signY = finalY + 55;
+        doc.setDrawColor(180, 180, 180);
+        doc.line(70, signY, 230, signY);
+        doc.line(350, signY, 510, signY);
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Firma Responsable: ${this.safe(usuario)}`, 75, signY + 14);
+        doc.text('Control y Arqueo / Administración', 355, signY + 14);
+
+        if (descargar) {
+            const safeNombre = (graderia.nombre || 'graderia').replace(/\s+/g, '_');
+            const filename = `reporte_ventas_${safeNombre}_${Date.now()}.pdf`;
+            doc.save(filename);
+        }
+
+        return doc;
+    }
+
+    /**
+     * Genera el Reporte Consolidado de TODAS las Graderías del Usuario.
+     */
+    generarPdfReporteTodasGraderias(
+        usuario: string,
+        detalleUsuario: DetalleUsuarioVentasResponse,
+        reporteDiario: ReporteDiarioResponse | null,
+        descargar: boolean = true
+    ): jsPDF {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+        const now = this.fmtDateTime(new Date());
+        const res = detalleUsuario.resumen;
+
+        // Banda superior decorativa
+        doc.setFillColor(150, 0, 35);
+        doc.rect(40, 30, 532, 5, 'F');
+
+        // Encabezado
+        doc.setFontSize(15);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text('REPORTE CONSOLIDADO DE TODAS MIS GRADERÍAS', 40, 56);
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Operador / Responsable: ${this.safe(usuario)}   |   Total Graderías: ${detalleUsuario.graderias.length} sectores`, 40, 72);
+        doc.text(`Emisión: ${now}   |   Sistema Carnaval de Graderías`, 40, 85);
+
+        // Cajas de resumen
+        const startY = 100;
+        const boxW = 125;
+        const boxH = 44;
+        const boxes = [
+            { label: 'TOTAL RECAUDADO', val: `Bs. ${this.money(res.total_recaudado)}`, col: [236, 253, 245], textCol: [5, 150, 105] },
+            { label: 'BUTACAS PAGADAS', val: `${res.total_pagados} / ${res.capacidad_total}`, col: [239, 246, 255], textCol: [37, 99, 235] },
+            { label: 'OCUPACIÓN GENERAL', val: `${res.porcentaje_ocupacion}% del aforo`, col: [245, 243, 255], textCol: [109, 40, 217] },
+            { label: 'EN RESERVA', val: `${res.total_reservados} (Bs. ${this.money(res.total_reservado_monto)})`, col: [254, 243, 199], textCol: [217, 119, 6] }
+        ];
+
+        boxes.forEach((b, idx) => {
+            const bx = 40 + idx * (boxW + 10);
+            doc.setFillColor(b.col[0], b.col[1], b.col[2]);
+            doc.roundedRect(bx, startY, boxW, boxH, 4, 4, 'F');
+
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(100, 116, 139);
+            doc.text(b.label, bx + 8, startY + 14);
+
+            doc.setFontSize(9.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(b.textCol[0], b.textCol[1], b.textCol[2]);
+            doc.text(b.val, bx + 8, startY + 31);
+        });
+
+        // Tabla 1: Rendimiento y Recaudación por Gradería
+        doc.setFontSize(10.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('1. Comparativa y Desglose por Sector / Gradería', 40, 168);
+
+        const headGrad = [['#', 'Gradería / Sector', 'Capacidad', 'Pagados', 'Reservas', 'Libres', 'Total Recaudado', '% Ocup.']];
+        const bodyGrad = detalleUsuario.graderias.map((g, i) => [
+            String(i + 1),
+            this.safe(g.nombre),
+            String(g.capacidad_total),
+            String(g.total_pagados),
+            String(g.total_reservados),
+            String(g.total_libres),
+            `Bs. ${this.money(g.total_recaudado)}`,
+            `${g.porcentaje_ocupacion}%`
+        ]);
+
+        const footGrad = [['', 'TOTAL CONSOLIDADO', String(res.capacidad_total), String(res.total_pagados), String(res.total_reservados), String(res.total_libres), `Bs. ${this.money(res.total_recaudado)}`, `${res.porcentaje_ocupacion}%`]];
+
+        autoTable(doc, {
+            head: headGrad,
+            body: bodyGrad,
+            foot: footGrad,
+            startY: 178,
+            theme: 'striped',
+            styles: { fontSize: 8.5, cellPadding: 4.5, textColor: [30, 41, 59] },
+            headStyles: { fillColor: [150, 0, 35], textColor: [255, 255, 255], fontStyle: 'bold' },
+            footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 25 },
+                1: { cellWidth: 140 },
+                2: { halign: 'center', cellWidth: 55 },
+                3: { halign: 'center', cellWidth: 50 },
+                4: { halign: 'center', cellWidth: 50 },
+                5: { halign: 'center', cellWidth: 45 },
+                6: { halign: 'right', cellWidth: 110 },
+                7: { halign: 'center', cellWidth: 57 }
+            },
+            margin: { left: 40, right: 40 }
+        });
+
+        // Tabla 2: Evolución Diaria de Cobros Consolidada
+        let currentY = (doc as any).lastAutoTable?.finalY + 25;
+        if (reporteDiario && reporteDiario.dias && reporteDiario.dias.length > 0) {
+            if (currentY > 520) {
+                doc.addPage();
+                currentY = 40;
+            }
+
+            doc.setFontSize(10.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            doc.text('2. Evolución Cronológica de Cobros Diarios (Todas las Graderías)', 40, currentY);
+
+            const headDias = [['#', 'Fecha', 'Butacas Cobradas', 'Total Cobrado (Bs)', '% del Consolidado']];
+            const bodyDias = reporteDiario.dias.map((d, i) => [
+                String(i + 1),
+                d.fecha,
+                `${d.total_butacas} butacas`,
+                `Bs. ${this.money(d.total_recaudado)}`,
+                res.total_recaudado > 0 ? `${Math.round((d.total_recaudado / res.total_recaudado) * 100)}%` : '0%'
+            ]);
+
+            autoTable(doc, {
+                head: headDias,
+                body: bodyDias,
+                startY: currentY + 10,
+                theme: 'striped',
+                styles: { fontSize: 8.5, cellPadding: 4, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 25 },
+                    1: { cellWidth: 140 },
+                    2: { halign: 'center', cellWidth: 120 },
+                    3: { halign: 'right', cellWidth: 130 },
+                    4: { halign: 'center', cellWidth: 117 }
+                },
+                margin: { left: 40, right: 40 },
+                didDrawPage: (data) => {
+                    const pageCount = doc.getNumberOfPages();
+                    doc.setFontSize(8);
+                    doc.setTextColor(140, 140, 140);
+                    doc.text(`Página ${data.pageNumber} de ${pageCount}`, doc.internal.pageSize.getWidth() - 95, doc.internal.pageSize.getHeight() - 15);
+                }
+            });
+
+            currentY = (doc as any).lastAutoTable?.finalY;
+        }
+
+        // Firmas
+        let finalY = currentY || 500;
+        if (finalY > 640) {
+            doc.addPage();
+            finalY = 60;
+        }
+
+        const signY = finalY + 55;
+        doc.setDrawColor(180, 180, 180);
+        doc.line(70, signY, 230, signY);
+        doc.line(350, signY, 510, signY);
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Firma Responsable: ${this.safe(usuario)}`, 75, signY + 14);
+        doc.text('Control y Arqueo / Administración', 355, signY + 14);
+
+        if (descargar) {
+            const filename = `reporte_consolidado_mis_graderias_${Date.now()}.pdf`;
             doc.save(filename);
         }
 

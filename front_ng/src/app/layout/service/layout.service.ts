@@ -187,6 +187,50 @@ export class LayoutService {
     }
 
     /**
+     * Aplica temas preconfigurados de alto contraste (especialmente combinaciones Carmesí y Oruro).
+     */
+    aplicarTemaPreconfigurado(presetKey: 'carmesi_oro' | 'carmesi_blanco' | 'carmesi_rubi' | 'slate_guindo' | 'zinc_emerald'): void {
+        const configs: Record<string, { surface: string; primary: string; darkTheme: boolean }> = {
+            carmesi_oro: {
+                surface: 'carmesi',
+                primary: '#eab308', // Dorado Carnaval de alto contraste
+                darkTheme: true
+            },
+            carmesi_blanco: {
+                surface: 'carmesi',
+                primary: '#f8fafc', // Blanco Marfil
+                darkTheme: true
+            },
+            carmesi_rubi: {
+                surface: 'carmesi',
+                primary: '#f43f5e', // Rosa Rubí brillante
+                darkTheme: true
+            },
+            slate_guindo: {
+                surface: 'slate',
+                primary: '#960023', // Rojo Carmesí Oruro
+                darkTheme: true
+            },
+            zinc_emerald: {
+                surface: 'zinc',
+                primary: 'emerald',
+                darkTheme: true
+            }
+        };
+
+        const seleccion = configs[presetKey];
+        if (seleccion) {
+            this.layoutConfig.update((state) => ({
+                ...state,
+                surface: seleccion.surface,
+                primary: seleccion.primary,
+                darkTheme: seleccion.darkTheme
+            }));
+            this.aplicarTemaCompleto(this.layoutConfig());
+        }
+    }
+
+    /**
      * Restablece todos los parámetros a los valores por defecto configurados en el environment.
      */
     restablecerValoresPorDefecto(): void {
@@ -200,7 +244,7 @@ export class LayoutService {
     private handleDarkModeTransition(config: LayoutConfig): void {
         const supportsViewTransition = typeof document !== 'undefined' && 'startViewTransition' in document;
 
-        if (supportsViewTransition) {
+        if (supportsViewTransition && document.visibilityState === 'visible') {
             this.startViewTransition(config);
         } else {
             this.toggleDarkMode(config);
@@ -208,9 +252,19 @@ export class LayoutService {
     }
 
     private startViewTransition(config: LayoutConfig): void {
-        (document as any).startViewTransition(() => {
+        try {
+            const transition = (document as any).startViewTransition(() => {
+                this.toggleDarkMode(config);
+            });
+            if (transition?.ready) {
+                transition.ready.catch(() => {});
+            }
+            if (transition?.finished) {
+                transition.finished.catch(() => {});
+            }
+        } catch {
             this.toggleDarkMode(config);
-        });
+        }
     }
 
     toggleDarkMode(config?: LayoutConfig): void {

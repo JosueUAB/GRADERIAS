@@ -1,0 +1,99 @@
+services:
+  # =========================================================================
+  # 1. Base de Datos Relacional (MySQL 8.0)
+  # =========================================================================
+  graderias_db:
+    image: mysql:8.0
+    container_name: graderias_db
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-back_graderias}
+      MYSQL_USER: ${DB_USERNAME:-graderias_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-graderias_pass}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-graderias_root_pass}
+    volumes:
+      - graderias_db_data:/var/lib/mysql
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    networks:
+      - graderias_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME:-graderias_user}", "-p${DB_PASSWORD:-graderias_pass}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # =========================================================================
+  # 2. Backend API RESTful (Laravel 12 + PHP 8.4-FPM + Nginx + Supervisor)
+  # =========================================================================
+  graderias_back:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: graderias_back
+    restart: unless-stopped
+    depends_on:
+      graderias_db:
+        condition: service_healthy
+    environment:
+      APP_NAME: "${APP_NAME:-Graderias}"
+      APP_ENV: "${APP_ENV:-production}"
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_KEY: "${APP_KEY:-}"
+      APP_URL: "${APP_URL:-http://localhost:8000}"
+      DB_CONNECTION: mysql
+      DB_HOST: graderias_db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-back_graderias}
+      DB_USERNAME: ${DB_USERNAME:-graderias_user}
+      DB_PASSWORD: ${DB_PASSWORD:-graderias_pass}
+      QUEUE_CONNECTION: database
+      SESSION_DRIVER: database
+      RUN_SEEDERS: "${RUN_SEEDERS:-false}"
+    volumes:
+      - graderias_storage_data:/var/www/html/storage
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - graderias_network
+      # Si Nginx Proxy Manager corre en la misma máquina en su propia red Docker:
+      # - npm_network
+
+  # =========================================================================
+  # 3. Frontend Web SPA (Angular 21 + PrimeNG 21 + Nginx Alpine)
+  # =========================================================================
+  graderias_front:
+    build:
+      context: ./front_ng
+      dockerfile: Dockerfile
+    container_name: graderias_front
+    restart: unless-stopped
+    depends_on:
+      - graderias_back
+    environment:
+      # URLs públicas con las que el navegador del usuario se comunicará con la API
+      API_URL: "${PUBLIC_API_URL:-http://localhost:8000/api}"
+      AVATAR_URL: "${PUBLIC_AVATAR_URL:-http://localhost:8000/images}"
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - graderias_network
+      # Si Nginx Proxy Manager corre en la misma máquina en su propia red Docker:
+      # - npm_network
+
+volumes:
+  graderias_db_data:
+    name: graderias_db_data
+  graderias_storage_data:
+    name: graderias_storage_data
+
+networks:
+  graderias_network:
+    name: graderias_network
+    driver: bridge
+
+  # Si utilizas Nginx Proxy Manager en Docker en la misma red, descomenta:
+  # npm_network:
+  #   external: true

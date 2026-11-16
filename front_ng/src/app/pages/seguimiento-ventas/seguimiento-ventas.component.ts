@@ -15,6 +15,7 @@ import { ReportePdfService } from '@/app/core/services/reporte-pdf.service';
 import { TablaOperadoresComponent } from './components/tabla-operadores/tabla-operadores.component';
 import { TablaAuditoriaAsientosComponent } from './components/tabla-auditoria-asientos/tabla-auditoria-asientos.component';
 import { DialogDetalleOperadorComponent } from './components/dialog-detalle-operador/dialog-detalle-operador.component';
+import { ReporteIngresosDiariosComponent } from './components/reporte-ingresos-diarios/reporte-ingresos-diarios.component';
 
 @Component({
     selector: 'app-seguimiento-ventas',
@@ -32,7 +33,8 @@ import { DialogDetalleOperadorComponent } from './components/dialog-detalle-oper
         TooltipModule,
         TablaOperadoresComponent,
         TablaAuditoriaAsientosComponent,
-        DialogDetalleOperadorComponent
+        DialogDetalleOperadorComponent,
+        ReporteIngresosDiariosComponent
     ],
     templateUrl: './seguimiento-ventas.component.html'
 })
@@ -41,9 +43,10 @@ export class SeguimientoVentasComponent implements OnInit {
     authStore = inject(AuthStore);
     reportePdf = inject(ReportePdfService);
 
-    vistaActiva = signal<'operadores' | 'auditoria'>('operadores');
+    vistaActiva = signal<'diario' | 'operadores' | 'auditoria'>('diario');
 
     vistasOpciones = [
+        { label: 'Ingresos Diarios y Totales', value: 'diario', icon: 'pi pi-calendar' },
         { label: 'Rendimiento por Operador', value: 'operadores', icon: 'pi pi-users' },
         { label: 'Auditoría Global de Butacas', value: 'auditoria', icon: 'pi pi-history' }
     ];
@@ -65,6 +68,7 @@ export class SeguimientoVentasComponent implements OnInit {
 
     ngOnInit(): void {
         this.store.cargarSeguimiento();
+        this.store.cargarReporteDiario();
     }
 
     onFiltrar(): void {
@@ -88,6 +92,7 @@ export class SeguimientoVentasComponent implements OnInit {
 
     recargar(): void {
         this.store.cargarSeguimiento();
+        this.store.cargarReporteDiario();
     }
 
     exportarConsolidadoPdf(): void {

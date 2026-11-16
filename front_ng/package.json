@@ -23,6 +23,7 @@
         "chart.js": "4.4.2",
         "jspdf": "^4.2.1",
         "jspdf-autotable": "^5.0.9",
+        "maplibre-gl": "^6.18.0",
         "primeclt": "^0.1.5",
         "primeicons": "^7.0.0",
         "primeng": "^21.0.2",

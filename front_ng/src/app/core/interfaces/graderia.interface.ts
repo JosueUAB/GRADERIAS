@@ -5,6 +5,8 @@ export interface Graderia {
     codigo: string | null;
     code: string;
     direccion: string | null;
+    latitud?: number | null;
+    longitud?: number | null;
     ref_izquierda: string | null;
     ref_derecha: string | null;
     ref_frente: string | null;
@@ -18,11 +20,24 @@ export interface Graderia {
     created_at?: string;
     updated_at?: string;
     asientos_count?: number;
+    pagados_count?: number;
+    reservados_count?: number;
+    libres_count?: number;
+    bloqueados_count?: number;
+    user?: {
+        id: number;
+        name: string;
+        username: string;
+        role: string;
+        avatar?: string;
+    };
 }
 
 export interface CrearGraderiaDTO {
     nombre: string;
     direccion?: string;
+    latitud?: number | null;
+    longitud?: number | null;
     filas: number;
     columnas: number;
     etiqueta_modo: 'fila' | 'columna';

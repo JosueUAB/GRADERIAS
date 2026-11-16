@@ -1,0 +1,504 @@
+<p-dialog
+    [visible]="visible()"
+    (visibleChange)="cerrar()"
+    [modal]="true"
+    [maximizable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '92vw', maxWidth: '1150px' }"
+    styleClass="p-dialog-modern"
+>
+    <!-- Encabezado del Modal -->
+    <ng-template #header>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center bg-primary-100 dark:bg-primary-400/10 rounded-border p-2.5">
+                <i class="pi pi-chart-pie text-primary text-2xl!"></i>
+            </div>
+            <div>
+                <div class="text-surface-900 dark:text-surface-0 font-bold text-xl">
+                    Reportes Financieros y de Ventas
+                </div>
+                <div class="text-xs text-muted-color mt-0.5">
+                    Auditoría de recaudación, evolución de ingresos diarios y control de aforo.
+                </div>
+            </div>
+        </div>
+    </ng-template>
+
+    <!-- Contenedor Principal del Diálogo -->
+    <div class="flex flex-col gap-6 pt-2">
+        <!-- Selector de Ámbito: Esta Gradería vs Todas Mis Graderías -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 rounded-2xl bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700">
+            <div class="w-full sm:w-auto">
+                <p-selectbutton
+                    [options]="opcionesAmbito"
+                    [ngModel]="modoAmbito()"
+                    (ngModelChange)="modoAmbito.set($event)"
+                    optionLabel="label"
+                    optionValue="value"
+                >
+                    <ng-template #item let-item>
+                        <i [class]="item.icon + ' mr-2'"></i>
+                        <span class="font-bold">{{ item.label }}</span>
+                    </ng-template>
+                </p-selectbutton>
+            </div>
+
+            <!-- Botón de Exportación Rápida según el Ámbito -->
+            <div>
+                @if (modoAmbito() === 'esta') {
+                    <div class="flex items-center gap-2">
+                        <p-button
+                            label="Descargar PDF Esta Gradería"
+                            icon="pi pi-file-pdf"
+                            severity="danger"
+                            [rounded]="true"
+                            size="small"
+                            (click)="descargarPdfEstaGraderia()"
+                        />
+                    </div>
+                } @else {
+                    <p-button
+                        label="Descargar PDF Todas Mis Graderías"
+                        icon="pi pi-file-pdf"
+                        severity="danger"
+                        [rounded]="true"
+                        size="small"
+                        (click)="descargarPdfTodasGraderias()"
+                    />
+                }
+            </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- CASO 1: REPORTE DE ESTA GRADERÍA COMO TAL               -->
+        <!-- ======================================================== -->
+        @if (modoAmbito() === 'esta') {
+            <!-- Subtítulo de la Gradería Actual -->
+            <div class="flex items-center justify-between pb-2 border-b border-surface-200 dark:border-surface-700">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-lg text-surface-900 dark:text-surface-0">
+                        {{ graderiaActual()?.nombre || 'Gradería Seleccionada' }}
+                    </span>
+                    <p-tag [value]="graderiaActual()?.activo ? 'ACTIVA' : 'INACTIVA'" [severity]="graderiaActual()?.activo ? 'success' : 'danger'" />
+                </div>
+                <span class="text-xs text-muted-color">
+                    {{ graderiaActual()?.direccion || 'Sin dirección' }} · {{ capacidadEsta() }} butacas totales
+                </span>
+            </div>
+
+            <!-- 4 Tarjetas KPI Sakai de Esta Gradería -->
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Total Recaudado</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    Bs. {{ formatMoney(totalRecaudadoEsta()) }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-emerald-100 dark:bg-emerald-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-dollar text-emerald-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs">
+                            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ totalPagadosEsta() }} butacas </span>
+                            <span class="text-muted-color">cobradas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-2">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Ocupación del Sector</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    {{ totalPagadosEsta() + totalReservadosEsta() }}
+                                    <span class="text-sm font-normal text-muted-color">/ {{ capacidadEsta() }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-ticket text-blue-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <p-progressbar [value]="porcentajeOcupacionEsta()" [showValue]="false" styleClass="h-2 mb-1" />
+                            <div class="flex justify-between text-xs font-semibold">
+                                <span class="text-muted-color">Aforo comprometido</span>
+                                <span class="text-primary">{{ porcentajeOcupacionEsta() }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Por Cobrar (Reservas)</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    Bs. {{ formatMoney(totalReservadoMontoEsta()) }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-amber-100 dark:bg-amber-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-clock text-amber-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs">
+                            <span class="text-amber-600 dark:text-amber-400 font-semibold">{{ totalReservadosEsta() }} butacas </span>
+                            <span class="text-muted-color">pendientes de pago</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Butacas Disponibles</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    {{ totalLibresEsta() }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-check-circle text-purple-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs">
+                            <span class="text-primary font-semibold">Listas para la venta</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Ingresos Diarios de Esta Gradería -->
+            <div class="card mb-0">
+                <div class="font-semibold text-base text-surface-900 dark:text-surface-0 mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-calendar text-primary"></i>
+                        <span>Evolución de Ingresos Diarios en {{ graderiaActual()?.nombre }}</span>
+                    </div>
+                    <span class="text-xs text-muted-color">{{ diasEsta().length }} fecha(s) con ventas</span>
+                </div>
+
+                <p-table
+                    [value]="diasEsta()"
+                    styleClass="p-datatable-sm"
+                    [tableStyle]="{ 'min-width': '40rem' }"
+                >
+                    <ng-template #header>
+                        <tr>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0">Fecha de Venta</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">Butacas Cobradas</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-right">Monto Recaudado</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">% de la Gradería</th>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #body let-dia>
+                        <tr>
+                            <td>
+                                <span class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ dia.fecha }}</span>
+                                <span class="text-xs text-muted-color block capitalize">{{ formatearFechaLarga(dia.fecha) }}</span>
+                            </td>
+                            <td class="text-center font-medium text-sm">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400">
+                                    <i class="pi pi-ticket text-xs"></i>
+                                    {{ dia.total_butacas }} butacas
+                                </span>
+                            </td>
+                            <td class="text-right">
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                                    Bs. {{ formatMoney(dia.total_recaudado) }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="flex items-center justify-center gap-2">
+                                    <p-progressbar [value]="dia.porcentaje_del_total || 0" [showValue]="false" styleClass="h-2 w-24" />
+                                    <span class="text-xs font-semibold text-muted-color w-8">{{ dia.porcentaje_del_total || 0 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #emptymessage>
+                        <tr>
+                            <td colspan="4" class="text-center p-6 text-muted-color">
+                                <i class="pi pi-calendar-times text-3xl mb-2 text-muted-color block"></i>
+                                Aún no hay ventas cobradas registradas para esta gradería.
+                            </td>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #footer>
+                        <tr>
+                            <td class="font-bold text-surface-900 dark:text-surface-0 text-right">
+                                Total Acumulado en esta Gradería:
+                            </td>
+                            <td class="text-center font-bold text-surface-900 dark:text-surface-0">
+                                {{ totalPagadosEsta() }} butacas
+                            </td>
+                            <td class="text-right font-bold text-emerald-600 dark:text-emerald-400 text-lg">
+                                Bs. {{ formatMoney(totalRecaudadoEsta()) }}
+                            </td>
+                            <td class="text-center font-bold text-surface-900 dark:text-surface-0">
+                                100%
+                            </td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        }
+
+        <!-- ======================================================== -->
+        <!-- CASO 2: REPORTE CONSOLIDADO DE TODAS MIS GRADERÍAS       -->
+        <!-- ======================================================== -->
+        @if (modoAmbito() === 'todas') {
+            <!-- Subtítulo de Todas las Graderías -->
+            <div class="flex items-center justify-between pb-2 border-b border-surface-200 dark:border-surface-700">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-lg text-surface-900 dark:text-surface-0">
+                        Consolidado General de Mis Graderías
+                    </span>
+                    <p-tag [value]="authStore.rol()" severity="info" />
+                </div>
+                <span class="text-xs text-muted-color">
+                    Responsable: <strong class="text-surface-800 dark:text-surface-200">{{ authStore.nombreUsuario() }}</strong> ·
+                    {{ graderiasTodas().length }} sectores a cargo
+                </span>
+            </div>
+
+            <!-- 4 Tarjetas KPI de Todas las Graderías -->
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Recaudación Acumulada</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    Bs. {{ formatMoney(resumenTodas()?.total_recaudado) }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-emerald-100 dark:bg-emerald-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-dollar text-emerald-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs">
+                            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ resumenTodas()?.total_pagados ?? 0 }} butacas </span>
+                            <span class="text-muted-color">cobradas en total</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-2">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Ocupación Global</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    {{ (resumenTodas()?.total_pagados ?? 0) + (resumenTodas()?.total_reservados ?? 0) }}
+                                    <span class="text-sm font-normal text-muted-color">/ {{ resumenTodas()?.capacidad_total ?? 0 }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-chart-line text-blue-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <p-progressbar [value]="resumenTodas()?.porcentaje_ocupacion ?? 0" [showValue]="false" styleClass="h-2 mb-1" />
+                            <div class="flex justify-between text-xs font-semibold">
+                                <span class="text-muted-color">Aforo acumulado ocupado</span>
+                                <span class="text-primary">{{ resumenTodas()?.porcentaje_ocupacion ?? 0 }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">En Reserva Acumulado</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    Bs. {{ formatMoney(resumenTodas()?.total_reservado_monto) }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-amber-100 dark:bg-amber-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-clock text-amber-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs">
+                            <span class="text-amber-600 dark:text-amber-400 font-semibold">{{ resumenTodas()?.total_reservados ?? 0 }} butacas </span>
+                            <span class="text-muted-color">pendientes por cobrar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+                    <div class="card mb-0 h-full flex flex-col justify-between">
+                        <div class="flex justify-between mb-3">
+                            <div>
+                                <span class="block text-muted-color font-medium text-xs mb-1">Graderías a Mi Cargo</span>
+                                <div class="text-surface-900 dark:text-surface-0 font-bold text-2xl">
+                                    {{ graderiasTodas().length }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width: 2.75rem; height: 2.75rem">
+                                <i class="pi pi-objects-column text-purple-500 text-xl!"></i>
+                            </div>
+                        </div>
+                        <div class="text-xs">
+                            <span class="text-primary font-semibold">{{ resumenTodas()?.total_libres ?? 0 }} butacas libres</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla 1: Rendimiento y Recaudación por Gradería -->
+            <div class="card mb-0">
+                <div class="font-semibold text-base text-surface-900 dark:text-surface-0 mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-th-large text-primary"></i>
+                        <span>Desglose por Sector / Gradería</span>
+                    </div>
+                    <span class="text-xs text-muted-color">{{ graderiasTodas().length }} graderías registradas</span>
+                </div>
+
+                <p-table
+                    [value]="graderiasTodas()"
+                    styleClass="p-datatable-sm"
+                    [tableStyle]="{ 'min-width': '50rem' }"
+                >
+                    <ng-template #header>
+                        <tr>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0">Gradería</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">Capacidad</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">Pagadas</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">Reservadas</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">Libres</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-right">Recaudado (Bs)</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center" style="width: 10rem">Ocupación</th>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #body let-g>
+                        <tr>
+                            <td>
+                                <span class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ g.nombre }}</span>
+                                <span class="text-xs text-muted-color block">{{ g.direccion || 'Sin dirección' }}</span>
+                            </td>
+                            <td class="text-center font-medium text-sm">{{ g.capacidad_total }}</td>
+                            <td class="text-center">
+                                <span class="font-semibold text-emerald-600 dark:text-emerald-400 text-sm">{{ g.total_pagados }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="font-semibold text-amber-600 dark:text-amber-400 text-sm">{{ g.total_reservados }}</span>
+                            </td>
+                            <td class="text-center text-muted-color text-sm">{{ g.total_libres }}</td>
+                            <td class="text-right">
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                                    Bs. {{ formatMoney(g.total_recaudado) }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <p-progressbar [value]="g.porcentaje_ocupacion || 0" [showValue]="false" styleClass="h-2 flex-1" />
+                                    <span class="text-xs font-semibold text-muted-color w-8">{{ g.porcentaje_ocupacion || 0 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #footer>
+                        <tr>
+                            <td class="font-bold text-surface-900 dark:text-surface-0">TOTAL CONSOLIDADO:</td>
+                            <td class="text-center font-bold text-surface-900 dark:text-surface-0">{{ resumenTodas()?.capacidad_total }}</td>
+                            <td class="text-center font-bold text-emerald-600 dark:text-emerald-400">{{ resumenTodas()?.total_pagados }}</td>
+                            <td class="text-center font-bold text-amber-600 dark:text-amber-400">{{ resumenTodas()?.total_reservados }}</td>
+                            <td class="text-center font-bold text-muted-color">{{ resumenTodas()?.total_libres }}</td>
+                            <td class="text-right font-bold text-emerald-600 dark:text-emerald-400 text-lg">
+                                Bs. {{ formatMoney(resumenTodas()?.total_recaudado) }}
+                            </td>
+                            <td class="text-center font-bold text-primary">{{ resumenTodas()?.porcentaje_ocupacion }}%</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+
+            <!-- Tabla 2: Evolución Diaria Consolidada de Todas Mis Graderías -->
+            <div class="card mb-0">
+                <div class="font-semibold text-base text-surface-900 dark:text-surface-0 mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-calendar text-primary"></i>
+                        <span>Evolución Diaria de Cobros (Todas mis Graderías)</span>
+                    </div>
+                    <span class="text-xs text-muted-color">{{ diasTodas().length }} fecha(s) con actividad</span>
+                </div>
+
+                <p-table
+                    [value]="diasTodas()"
+                    styleClass="p-datatable-sm"
+                    [tableStyle]="{ 'min-width': '40rem' }"
+                >
+                    <ng-template #header>
+                        <tr>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0">Fecha de Venta</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">Butacas Cobradas</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-right">Total Cobrado (Bs)</th>
+                            <th class="font-semibold text-xs text-surface-900 dark:text-surface-0 text-center">% del Consolidado</th>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #body let-dia>
+                        <tr>
+                            <td>
+                                <span class="font-bold text-surface-900 dark:text-surface-0 text-sm">{{ dia.fecha }}</span>
+                                <span class="text-xs text-muted-color block capitalize">{{ formatearFechaLarga(dia.fecha) }}</span>
+                            </td>
+                            <td class="text-center font-medium text-sm">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400">
+                                    <i class="pi pi-ticket text-xs"></i>
+                                    {{ dia.total_butacas }} butacas
+                                </span>
+                            </td>
+                            <td class="text-right">
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                                    Bs. {{ formatMoney(dia.total_recaudado) }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="flex items-center justify-center gap-2">
+                                    <p-progressbar [value]="dia.porcentaje_del_total || 0" [showValue]="false" styleClass="h-2 w-24" />
+                                    <span class="text-xs font-semibold text-muted-color w-8">{{ dia.porcentaje_del_total || 0 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template #emptymessage>
+                        <tr>
+                            <td colspan="4" class="text-center p-6 text-muted-color">
+                                No se encontraron ventas registradas en tus graderías.
+                            </td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        }
+    </div>
+
+    <!-- Pie del Diálogo -->
+    <ng-template #footer>
+        <div class="flex justify-end gap-2">
+            <p-button
+                label="Cerrar"
+                icon="pi pi-times"
+                severity="secondary"
+                [rounded]="true"
+                (click)="cerrar()"
+            />
+        </div>
+    </ng-template>
+</p-dialog>

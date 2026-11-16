@@ -17,12 +17,14 @@ import { Graderia } from '@/app/core/interfaces/graderia.interface';
 import { Asiento, EstadoAsiento, ActualizarBulkAsientosDTO } from '@/app/core/interfaces/asiento.interface';
 import { GraderiaService } from '@/app/core/services/graderia.service';
 import { AsientoService } from '@/app/core/services/asiento.service';
+import { SeguimientoVentasService } from '@/app/core/services/seguimiento-ventas.service';
 import { NotificacionService } from '@/app/core/services/notificacion.service';
 import { ReportePdfService } from '@/app/core/services/reporte-pdf.service';
 import { AuthStore } from '@/app/core/store/auth.store';
 import { GraderiaTicketDialogComponent } from '../graderia-ticket-dialog/graderia-ticket-dialog.component';
 import { GraderiaClientesDialogComponent } from '../graderia-clientes-dialog/graderia-clientes-dialog.component';
 import { AsientoEdicionDialogComponent } from '../asiento-edicion-dialog/asiento-edicion-dialog.component';
+import { GraderiaReportesDialogComponent } from '../graderia-reportes-dialog/graderia-reportes-dialog.component';
 import { DatosClienteTicket } from '@/app/core/services/ticket-pdf.service';
 
 interface CeldaMatriz {
@@ -58,7 +60,8 @@ interface FilaMatriz {
         InputIconModule,
         GraderiaTicketDialogComponent,
         GraderiaClientesDialogComponent,
-        AsientoEdicionDialogComponent
+        AsientoEdicionDialogComponent,
+        GraderiaReportesDialogComponent
     ],
     templateUrl: './graderia-venta.component.html'
 })
@@ -67,6 +70,7 @@ export class GraderiaVentaComponent implements OnInit {
     private route = inject(ActivatedRoute);
     private graderiaService = inject(GraderiaService);
     private asientoService = inject(AsientoService);
+    private seguimientoVentasService = inject(SeguimientoVentasService);
     private reportePdfService = inject(ReportePdfService);
     private notificacion = inject(NotificacionService);
     authStore = inject(AuthStore);
@@ -79,7 +83,7 @@ export class GraderiaVentaComponent implements OnInit {
 
     // Selección
     seleccionadosIds = signal<number[]>([]);
-    mostrarMontoReal = signal<boolean>(false);
+    mostrarMontoReal = signal<boolean>(true);
 
     // Formulario Reactivo para Asignación Masiva
     formBulk: FormGroup = this.fb.group({
@@ -116,6 +120,9 @@ export class GraderiaVentaComponent implements OnInit {
     // Diálogo de Búsqueda de Asiento por Código
     modalBuscarAsientoVisible: boolean = false;
     codigoBusquedaAsiento: string = '';
+
+    // Diálogo Unificado de Reportes y Finanzas (Esta Gradería y Todas Mis Graderías)
+    modalReportesVisible = signal<boolean>(false);
 
     // Menú de Reportes
     itemsMenuReportes: MenuItem[] = [];
@@ -199,6 +206,27 @@ export class GraderiaVentaComponent implements OnInit {
 
     private iniciarMenuReportes() {
         this.itemsMenuReportes = [
+            {
+                label: 'Reportes y Finanzas (Ver en Pantalla)',
+                icon: 'pi pi-chart-pie',
+                command: () => this.abrirModalReportesVentas()
+            },
+            {
+                separator: true
+            },
+            {
+                label: 'Reporte Diario de Esta Gradería (PDF)',
+                icon: 'pi pi-calendar',
+                command: () => this.imprimirReporteDiarioEstaGraderia()
+            },
+            {
+                label: 'Reporte Consolidado de Todas Mis Graderías (PDF)',
+                icon: 'pi pi-objects-column',
+                command: () => this.imprimirReporteTodasMisGraderias()
+            },
+            {
+                separator: true
+            },
             {
                 label: 'Reporte por Clientes (PDF)',
                 icon: 'pi pi-users',
@@ -389,6 +417,82 @@ export class GraderiaVentaComponent implements OnInit {
     }
 
     // --- ACCIONES ESPECÍFICAS SOLICITADAS POR EL USUARIO ---
+
+    /**
+     * Abre el modal interactivo de reportes de ventas (Esta Gradería y Todas Mis Graderías).
+     */
+    abrirModalReportesVentas() {
+        this.modalReportesVisible.set(true);
+    }
+
+    /**
+     * Imprime directamente el Reporte de Ventas e Ingresos Diarios de esta gradería en PDF.
+     */
+    imprimirReporteDiarioEstaGraderia() {
+        const g = this.graderia();
+        if (!g) return;
+
+        this.seguimientoVentasService.obtenerReporteDiario({ graderia_id: g.id }).subscribe({
+            next: (repDiario) => {
+                this.reportePdfService.generarPdfReporteGraderiaIndividual(
+                    g,
+                    this.asientos(),
+                    repDiario,
+                    this.authStore.nombreUsuario(),
+                    true
+                );
+                this.notificacion.exito(`Reporte de ventas de ${g.nombre} generado en PDF.`);
+            },
+            error: () => {
+                // Fallback sin el detalle de días si fallase la red
+                this.reportePdfService.generarPdfReporteGraderiaIndividual(
+                    g,
+                    this.asientos(),
+                    null,
+                    this.authStore.nombreUsuario(),
+                    true
+                );
+            }
+        });
+    }
+
+    /**
+     * Imprime directamente el Reporte Consolidado de Todas las Graderías del Usuario en PDF.
+     */
+    imprimirReporteTodasMisGraderias() {
+        const uId = this.authStore.usuario()?.id;
+        if (!uId) {
+            this.notificacion.error('No se pudo identificar el usuario actual.');
+            return;
+        }
+
+        this.seguimientoVentasService.obtenerDetalleUsuario(uId).subscribe({
+            next: (detalle) => {
+                this.seguimientoVentasService.obtenerReporteDiario().subscribe({
+                    next: (repDiario) => {
+                        this.reportePdfService.generarPdfReporteTodasGraderias(
+                            this.authStore.nombreUsuario(),
+                            detalle,
+                            repDiario,
+                            true
+                        );
+                        this.notificacion.exito('Reporte consolidado de todas tus graderías generado en PDF.');
+                    },
+                    error: () => {
+                        this.reportePdfService.generarPdfReporteTodasGraderias(
+                            this.authStore.nombreUsuario(),
+                            detalle,
+                            null,
+                            true
+                        );
+                    }
+                });
+            },
+            error: (err) => {
+                this.notificacion.error(err?.error?.message || 'Error al obtener el consolidado de graderías.');
+            }
+        });
+    }
 
     /**
      * Imprime el reporte agrupado por clientes (PDF estructurado).

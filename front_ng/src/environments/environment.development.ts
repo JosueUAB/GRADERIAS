@@ -1,7 +1,7 @@
 export const environment = {
     production: false,
-    apiUrl: 'http://localhost:8000/api',
-    avatarUrl: 'http://localhost:8000/images',
+    apiUrl: (typeof window !== 'undefined' && (window as any).__env?.apiUrl) || 'http://localhost:8000/api',
+    avatarUrl: (typeof window !== 'undefined' && (window as any).__env?.avatarUrl) || 'http://localhost:8000/images',
     appName: 'Reserva Tickets - Sistema de Graderías (Dev)',
     version: '2.0.0-dev',
 

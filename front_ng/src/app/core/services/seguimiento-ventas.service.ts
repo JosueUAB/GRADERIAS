@@ -5,7 +5,9 @@ import { environment } from '@/environments/environment';
 import {
     SeguimientoVentasResponse,
     DetalleUsuarioVentasResponse,
-    FiltrosSeguimiento
+    FiltrosSeguimiento,
+    ReporteDiarioResponse,
+    FiltrosReporteDiario
 } from '../interfaces/seguimiento-ventas.interface';
 
 @Injectable({
@@ -43,6 +45,30 @@ export class SeguimientoVentasService {
         }
 
         return this.http.get<SeguimientoVentasResponse>(`${this.apiUrl}/ventas/seguimiento`, { params });
+    }
+
+    /**
+     * Obtiene el reporte de ingresos diarios y totales agrupados por día y por usuario.
+     */
+    obtenerReporteDiario(filtros?: FiltrosReporteDiario): Observable<ReporteDiarioResponse> {
+        let params = new HttpParams();
+
+        if (filtros) {
+            if (filtros.user_id) {
+                params = params.set('user_id', filtros.user_id.toString());
+            }
+            if (filtros.graderia_id) {
+                params = params.set('graderia_id', filtros.graderia_id.toString());
+            }
+            if (filtros.fecha_desde) {
+                params = params.set('fecha_desde', filtros.fecha_desde);
+            }
+            if (filtros.fecha_hasta) {
+                params = params.set('fecha_hasta', filtros.fecha_hasta);
+            }
+        }
+
+        return this.http.get<ReporteDiarioResponse>(`${this.apiUrl}/ventas/reporte-diario`, { params });
     }
 
     /**

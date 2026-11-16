@@ -1,5 +1,6 @@
 /* You can add global styles to this file, and also import other style files */
 @use 'primeicons/primeicons.css';
+@use 'maplibre-gl/dist/maplibre-gl.css';
 @use '@/assets/layout/layout.scss';
 @use '@/assets/demo/demo.scss';
 
@@ -15,4 +16,30 @@ html {
 body.p-overflow-hidden:not(:has(.p-dialog-mask)):not(:has(.p-overlay-mask)):not(:has(.p-sidebar-mask)),
 body.blocked-scroll:not(:has(.layout-mobile-active)) {
     overflow: auto !important;
+}
+
+/* ==========================================================================
+   Garantía de Alto Contraste en Modo Oscuro y Fondos Carmesí / Tintados
+   ========================================================================== */
+.app-dark {
+    /* Texto principal y secundario nítido, sin tintes rojizos que reduzcan contraste */
+    --p-text-color: #f8fafc;
+    --p-text-muted-color: #cbd5e1;
+
+    /* Asegurar que las etiquetas y textos secundarios no se pierdan */
+    .text-muted-color,
+    .text-surface-500,
+    .text-surface-400 {
+        color: #cbd5e1 !important;
+    }
+
+    /* Bordes sutiles pero visibles sobre fondos oscuros o carmesí */
+    .border-surface {
+        border-color: color-mix(in srgb, var(--p-surface-600) 45%, transparent) !important;
+    }
+
+    /* Transformación de alta fidelidad a modo oscuro para mapa raster OpenStreetMap (100% Libre sin API Key) */
+    .map-dark-raster canvas.maplibregl-canvas {
+        filter: invert(100%) hue-rotate(180deg) brightness(82%) contrast(92%);
+    }
 }

@@ -123,3 +123,94 @@ export interface DetalleUsuarioVentasResponse {
     graderias: GraderiaDetalleUsuario[];
     asientos_activos: AsientoActivoUsuario[];
 }
+
+export interface DiaOperadorItem {
+    user_id: number;
+    name: string;
+    username: string;
+    role: string;
+    avatar?: string;
+    total_recaudado: number;
+    total_butacas: number;
+}
+
+export interface DiaVentaItem {
+    fecha: string;
+    total_recaudado: number;
+    total_butacas: number;
+    operadores_count: number;
+    porcentaje_del_total?: number;
+    operadores: DiaOperadorItem[];
+}
+
+export interface UsuarioDiaItem {
+    fecha: string;
+    total_recaudado: number;
+    total_butacas: number;
+}
+
+export interface UsuarioReporteDiarioItem {
+    user_id: number;
+    name: string;
+    username: string;
+    role: string;
+    avatar?: string;
+    total_recaudado: number;
+    total_butacas: number;
+    dias_activos: number;
+    promedio_diario: number;
+    porcentaje_del_total?: number;
+    dias: UsuarioDiaItem[];
+}
+
+export interface ResumenReporteDiario {
+    total_recaudado: number;
+    total_butacas: number;
+    dias_activos: number;
+    promedio_diario: number;
+    dia_pico?: {
+        fecha: string;
+        total_recaudado: number;
+        total_butacas: number;
+    } | null;
+    hoy?: {
+        fecha: string;
+        total_recaudado: number;
+        total_butacas: number;
+    } | null;
+}
+
+export interface AsientoDetalleItem {
+    id: number;
+    codigo: string;
+    fila: number;
+    columna: number;
+    monto: number;
+    cliente_nombre?: string;
+    cliente_celular?: string;
+    pagado_at: string;
+    fecha_pago: string;
+    hora_pago: string;
+    graderia_id: number;
+    graderia_nombre: string;
+    operador_id: number;
+    operador_nombre: string;
+    operador_username: string;
+}
+
+export interface FiltrosReporteDiario {
+    user_id?: number | null;
+    graderia_id?: number | null;
+    fecha_desde?: string | null;
+    fecha_hasta?: string | null;
+    search?: string | null;
+}
+
+export interface ReporteDiarioResponse {
+    ok: boolean;
+    resumen: ResumenReporteDiario;
+    dias: DiaVentaItem[];
+    usuarios: UsuarioReporteDiarioItem[];
+    asientos_detalle: AsientoDetalleItem[];
+}
+

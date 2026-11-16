@@ -22,7 +22,7 @@
                     />
                 </div>
                 <span class="text-xs text-muted-color">
-                    {{ graderia()?.direccion || 'Sin dirección registrada' }} · 
+                    {{ graderia()?.direccion || 'Sin dirección registrada' }} ·
                     Dimensiones: {{ graderia()?.filas }}F x {{ graderia()?.columnas }}C
                 </span>
             </div>
@@ -89,6 +89,18 @@
                 pTooltip="Selecciona un cliente para emitir boletos QR o enviar WhatsApp"
             />
 
+            <!-- Ver Reportes Financieros y de Ventas (Pantalla) -->
+            <p-button
+                icon="pi pi-chart-pie"
+                label="Reportes de Ventas"
+                [rounded]="true"
+                size="small"
+                severity="help"
+                (click)="abrirModalReportesVentas()"
+                styleClass="font-bold shadow-xs"
+                pTooltip="Ver ingresos diarios y recaudación de esta gradería y de todas tus graderías"
+            />
+
             <!-- Menú Desplegable de Reportes PDF -->
             <p-button
                 icon="pi pi-file-pdf"
@@ -112,7 +124,7 @@
                 <p-button
                     [icon]="mostrarMontoReal() ? 'pi pi-eye' : 'pi pi-eye-slash'"
                     [rounded]="true"
-                    [text]="true"
+                    [text]="false"
                     size="small"
                     severity="secondary"
                     (click)="mostrarMontoReal.set(!mostrarMontoReal())"
@@ -295,7 +307,7 @@
         <div class="flex items-center justify-between text-xs text-muted-color px-2 pt-1">
             <span>⬅️ {{ graderia()?.start_left ? 'Columna 1 a la Izquierda' : 'Columna 1 a la Derecha' }}</span>
             <span class="text-center">
-                Total butacas en matriz: <strong>{{ asientos().length }}</strong> · 
+                Total butacas en matriz: <strong>{{ asientos().length }}</strong> ·
                 <span class="text-primary font-semibold">Doble clic en cualquier butaca para editarla</span>
             </span>
             <span>{{ graderia()?.start_top ? 'Fila 1 Arriba' : 'Fila 1 Abajo' }} ⬇️</span>
@@ -395,7 +407,7 @@
                 <div class="pt-2 border-t border-surface-200 dark:border-surface-800 flex flex-col gap-2.5">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-surface-900 dark:text-surface-0">Cobro y Tarifa</span>
-                        
+
                         <!-- Switch entre Modo Precio Unitario vs Total -->
                         <div class="flex items-center gap-1 bg-surface-100 dark:bg-surface-800 p-0.5 rounded-lg text-[11px]">
                             <button
@@ -596,3 +608,12 @@
         </div>
     </ng-template>
 </p-dialog>
+
+<!-- Diálogo Unificado de Reportes Financieros y de Ventas (Esta Gradería y Todas Mis Graderías) -->
+<app-graderia-reportes-dialog
+    [visible]="modalReportesVisible()"
+    [graderiaActual]="graderia()"
+    [asientosGraderiaActual]="asientos()"
+    (onClose)="modalReportesVisible.set(false)"
+/>
+

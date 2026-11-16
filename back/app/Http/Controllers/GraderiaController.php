@@ -74,7 +74,15 @@ class GraderiaController extends Controller
     {
         $user = $request->user();
 
-        $query = Graderia::query()->with('user:id,name,username,role,avatar');
+        $query = Graderia::query()
+            ->with('user:id,name,username,role,avatar')
+            ->withCount([
+                'asientos as total_asientos',
+                'asientos as pagados_count' => fn($q) => $q->where('estado', 'PAGADO'),
+                'asientos as reservados_count' => fn($q) => $q->where('estado', 'RESERVADO'),
+                'asientos as libres_count' => fn($q) => $q->where('estado', 'LIBRE'),
+                'asientos as bloqueados_count' => fn($q) => $q->where('estado', 'BLOQUEADO'),
+            ]);
 
         if (!$user->esAdmin()) {
             $query->where('user_id', $user->id);
@@ -137,6 +145,8 @@ class GraderiaController extends Controller
         $data = $request->validate([
             'nombre' => 'nullable|string|max:120',
             'direccion' => 'nullable|string|max:255',
+            'latitud' => 'nullable|numeric|between:-90,90',
+            'longitud' => 'nullable|numeric|between:-180,180',
             'filas' => 'required|integer|min:1|max:500',
             'columnas' => 'required|integer|min:1|max:500',
             'etiqueta_modo' => 'required|in:fila,columna',
@@ -166,6 +176,8 @@ class GraderiaController extends Controller
         $data = $request->validate([
             'nombre' => 'nullable|string|max:120',
             'direccion' => 'nullable|string|max:255',
+            'latitud' => 'nullable|numeric|between:-90,90',
+            'longitud' => 'nullable|numeric|between:-180,180',
             'filas' => 'required|integer|min:1|max:500',
             'columnas' => 'required|integer|min:1|max:500',
             'etiqueta_modo' => 'required|in:fila,columna',

@@ -103,7 +103,14 @@ export class AppMenuitem {
 
     parentPath = input<string | null>(null);
 
-    isVisible = computed(() => this.item()?.visible !== false);
+    isVisible = computed(() => {
+        if (this.item()?.visible === false) return false;
+        // Si es una categoría raíz con sub-items, solo se muestra si tiene al menos un elemento visible
+        if (this.root() && this.hasChildren()) {
+            return this.item()?.items?.some((child: any) => child && child.visible !== false);
+        }
+        return true;
+    });
 
     hasChildren = computed(() => this.item()?.items && this.item()?.items.length > 0);
 

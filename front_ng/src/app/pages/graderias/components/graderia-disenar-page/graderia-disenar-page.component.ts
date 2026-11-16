@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -13,6 +13,7 @@ import { Graderia, CrearGraderiaDTO } from '@/app/core/interfaces/graderia.inter
 import { GraderiaStore } from '@/app/core/store/graderia.store';
 import { NotificacionService } from '@/app/core/services/notificacion.service';
 import { GraderiaPreviewMatrizComponent } from '../graderia-preview-matriz/graderia-preview-matriz.component';
+import { MapaCoordenadasDialogComponent } from '../mapa-coordenadas-dialog/mapa-coordenadas-dialog.component';
 
 @Component({
     selector: 'app-graderia-disenar-page',
@@ -28,17 +29,22 @@ import { GraderiaPreviewMatrizComponent } from '../graderia-preview-matriz/grade
         ToggleSwitchModule,
         TagModule,
         TooltipModule,
-        GraderiaPreviewMatrizComponent
+        GraderiaPreviewMatrizComponent,
+        MapaCoordenadasDialogComponent
     ],
     templateUrl: './graderia-disenar-page.component.html'
 })
-export class GraderiaDisenarPageComponent {
+export class GraderiaDisenarPageComponent implements OnInit {
     store = inject(GraderiaStore);
     private notificacion = inject(NotificacionService);
     private router = inject(Router);
+    private route = inject(ActivatedRoute);
 
     nombre: string = '';
     direccion: string = '';
+    latitud: number | null = null;
+    longitud: number | null = null;
+    mostrarMapaPicker: boolean = false;
     filas: number = 10;
     columnas: number = 20;
     etiquetaModo: 'fila' | 'columna' = 'fila';
@@ -46,10 +52,33 @@ export class GraderiaDisenarPageComponent {
     startLeft: boolean = true;
     activo: boolean = true;
 
+    ngOnInit(): void {
+        const qLat = this.route.snapshot.queryParamMap.get('lat');
+        const qLng = this.route.snapshot.queryParamMap.get('lng');
+        if (qLat && qLng) {
+            const parsedLat = Number(qLat);
+            const parsedLng = Number(qLng);
+            if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+                this.latitud = parsedLat;
+                this.longitud = parsedLng;
+            }
+        }
+    }
+
     readonly opcionesModo = [
         { label: 'Filas con Letras: A1, A2, B1, B2...', value: 'fila' },
         { label: 'Columnas con Letras: A1, B1, C1, D1...', value: 'columna' }
     ];
+
+    onCoordenadasConfirmadas(coords: { latitud: number; longitud: number }): void {
+        this.latitud = coords.latitud;
+        this.longitud = coords.longitud;
+    }
+
+    limpiarCoordenadas(): void {
+        this.latitud = null;
+        this.longitud = null;
+    }
 
     modificarFilas(delta: number): void {
         const nuevo = (this.filas || 1) + delta;
@@ -75,6 +104,8 @@ export class GraderiaDisenarPageComponent {
         const dto: CrearGraderiaDTO = {
             nombre: this.nombre.trim(),
             direccion: this.direccion.trim(),
+            latitud: this.latitud,
+            longitud: this.longitud,
             filas: this.filas,
             columnas: this.columnas,
             etiqueta_modo: this.etiquetaModo,

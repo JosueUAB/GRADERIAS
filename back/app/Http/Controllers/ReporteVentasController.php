@@ -403,4 +403,213 @@ class ReporteVentasController extends Controller
             'asientos_activos' => $todosAsientosVendidos,
         ]);
     }
+
+    /**
+     * Reporte consolidado de ingresos diarios, evolución temporal y totales por usuario/operador.
+     */
+    public function reporteDiario(Request $request)
+    {
+        $currentUser = $request->user();
+        $esAdmin = $currentUser->esAdmin();
+
+        $filtroUserId = $request->query('user_id');
+        $filtroGraderiaId = $request->query('graderia_id');
+        $fechaDesde = $request->query('fecha_desde');
+        $fechaHasta = $request->query('fecha_hasta');
+
+        // Si no es admin, restringe estrictamente a su propio id
+        if (!$esAdmin) {
+            $filtroUserId = $currentUser->id;
+        }
+
+        $baseQuery = Asiento::query()
+            ->join('graderias', 'asientos.graderia_id', '=', 'graderias.id')
+            ->join('users', 'graderias.user_id', '=', 'users.id')
+            ->where('asientos.estado', 'PAGADO')
+            ->whereNull('asientos.deleted_at')
+            ->whereNull('graderias.deleted_at');
+
+        if ($filtroUserId) {
+            $baseQuery->where('graderias.user_id', $filtroUserId);
+        }
+
+        if ($filtroGraderiaId) {
+            $baseQuery->where('asientos.graderia_id', $filtroGraderiaId);
+        }
+
+        if ($fechaDesde) {
+            $baseQuery->whereDate(DB::raw('COALESCE(asientos.pagado_at, asientos.updated_at)'), '>=', $fechaDesde);
+        }
+
+        if ($fechaHasta) {
+            $baseQuery->whereDate(DB::raw('COALESCE(asientos.pagado_at, asientos.updated_at)'), '<=', $fechaHasta);
+        }
+
+        // 1. Agrupación por Día y Operador
+        $ventasPorDiaYUser = (clone $baseQuery)
+            ->select([
+                DB::raw('DATE(COALESCE(asientos.pagado_at, asientos.updated_at)) as fecha'),
+                'users.id as user_id',
+                'users.name as user_name',
+                'users.username as user_username',
+                'users.role as user_role',
+                'users.avatar as user_avatar',
+                DB::raw('COUNT(*) as total_butacas'),
+                DB::raw('SUM(asientos.monto) as total_recaudado')
+            ])
+            ->groupBy('fecha', 'users.id', 'users.name', 'users.username', 'users.role', 'users.avatar')
+            ->orderBy('fecha', 'desc')
+            ->orderBy('total_recaudado', 'desc')
+            ->get();
+
+        // 2. Estructuración por Días y por Usuarios
+        $diasAgrupados = [];
+        $usuariosAgrupados = [];
+        $totalRecaudadoGeneral = 0.0;
+        $totalButacasGeneral = 0;
+
+        foreach ($ventasPorDiaYUser as $reg) {
+            $fecha = (string) $reg->fecha;
+            $monto = (float) $reg->total_recaudado;
+            $butacas = (int) $reg->total_butacas;
+            $uId = (int) $reg->user_id;
+
+            $totalRecaudadoGeneral += $monto;
+            $totalButacasGeneral += $butacas;
+
+            // Agrupación por Día
+            if (!isset($diasAgrupados[$fecha])) {
+                $diasAgrupados[$fecha] = [
+                    'fecha'            => $fecha,
+                    'total_recaudado'  => 0.0,
+                    'total_butacas'    => 0,
+                    'operadores_count' => 0,
+                    'operadores'       => [],
+                ];
+            }
+            $diasAgrupados[$fecha]['total_recaudado'] += $monto;
+            $diasAgrupados[$fecha]['total_butacas'] += $butacas;
+            $diasAgrupados[$fecha]['operadores'][] = [
+                'user_id'         => $uId,
+                'name'            => $reg->user_name,
+                'username'        => $reg->user_username,
+                'role'            => $reg->user_role,
+                'avatar'          => $reg->user_avatar,
+                'total_recaudado' => $monto,
+                'total_butacas'   => $butacas,
+            ];
+            $diasAgrupados[$fecha]['operadores_count'] = count($diasAgrupados[$fecha]['operadores']);
+
+            // Agrupación por Usuario
+            if (!isset($usuariosAgrupados[$uId])) {
+                $usuariosAgrupados[$uId] = [
+                    'user_id'         => $uId,
+                    'name'            => $reg->user_name,
+                    'username'        => $reg->user_username,
+                    'role'            => $reg->user_role,
+                    'avatar'          => $reg->user_avatar,
+                    'total_recaudado' => 0.0,
+                    'total_butacas'   => 0,
+                    'dias_activos'    => 0,
+                    'promedio_diario' => 0.0,
+                    'dias'            => [],
+                ];
+            }
+            $usuariosAgrupados[$uId]['total_recaudado'] += $monto;
+            $usuariosAgrupados[$uId]['total_butacas'] += $butacas;
+            $usuariosAgrupados[$uId]['dias'][] = [
+                'fecha'           => $fecha,
+                'total_recaudado' => $monto,
+                'total_butacas'   => $butacas,
+            ];
+            $usuariosAgrupados[$uId]['dias_activos'] = count($usuariosAgrupados[$uId]['dias']);
+        }
+
+        // Calcular promedios y porcentajes por usuario
+        foreach ($usuariosAgrupados as &$uStat) {
+            $uStat['promedio_diario'] = $uStat['dias_activos'] > 0
+                ? round($uStat['total_recaudado'] / $uStat['dias_activos'], 2)
+                : 0.0;
+            $uStat['porcentaje_del_total'] = $totalRecaudadoGeneral > 0
+                ? round(($uStat['total_recaudado'] / $totalRecaudadoGeneral) * 100, 1)
+                : 0.0;
+        }
+        unset($uStat);
+
+        // Calcular porcentajes por día respecto al total general
+        foreach ($diasAgrupados as &$dStat) {
+            $dStat['porcentaje_del_total'] = $totalRecaudadoGeneral > 0
+                ? round(($dStat['total_recaudado'] / $totalRecaudadoGeneral) * 100, 1)
+                : 0.0;
+        }
+        unset($dStat);
+
+        $diasList = array_values($diasAgrupados);
+
+        $usuariosList = array_values($usuariosAgrupados);
+        usort($usuariosList, fn($a, $b) => $b['total_recaudado'] <=> $a['total_recaudado']);
+
+        $diasCount = count($diasList);
+        $promedioDiario = $diasCount > 0 ? round($totalRecaudadoGeneral / $diasCount, 2) : 0.0;
+
+        // Identificar día pico (récord de recaudación)
+        $diaPico = null;
+        $hoyFecha = Carbon::today()->toDateString();
+        $hoyStats = null;
+
+        foreach ($diasList as $d) {
+            if (!$diaPico || $d['total_recaudado'] > $diaPico['total_recaudado']) {
+                $diaPico = [
+                    'fecha'           => $d['fecha'],
+                    'total_recaudado' => $d['total_recaudado'],
+                    'total_butacas'   => $d['total_butacas'],
+                ];
+            }
+            if ($d['fecha'] === $hoyFecha) {
+                $hoyStats = [
+                    'fecha'           => $d['fecha'],
+                    'total_recaudado' => $d['total_recaudado'],
+                    'total_butacas'   => $d['total_butacas'],
+                ];
+            }
+        }
+
+        // 3. Detalle de butacas vendidas en el periodo
+        $asientosDetalle = (clone $baseQuery)
+            ->select([
+                'asientos.id',
+                'asientos.codigo',
+                'asientos.fila',
+                'asientos.columna',
+                'asientos.monto',
+                'asientos.cliente_nombre',
+                'asientos.cliente_celular',
+                DB::raw('COALESCE(asientos.pagado_at, asientos.updated_at) as pagado_at'),
+                DB::raw('DATE(COALESCE(asientos.pagado_at, asientos.updated_at)) as fecha_pago'),
+                DB::raw('TIME(COALESCE(asientos.pagado_at, asientos.updated_at)) as hora_pago'),
+                'graderias.id as graderia_id',
+                'graderias.nombre as graderia_nombre',
+                'users.id as operador_id',
+                'users.name as operador_nombre',
+                'users.username as operador_username',
+            ])
+            ->orderByRaw('COALESCE(asientos.pagado_at, asientos.updated_at) DESC')
+            ->limit(500)
+            ->get();
+
+        return response()->json([
+            'ok'               => true,
+            'resumen'          => [
+                'total_recaudado'  => $totalRecaudadoGeneral,
+                'total_butacas'    => $totalButacasGeneral,
+                'dias_activos'     => $diasCount,
+                'promedio_diario'  => $promedioDiario,
+                'dia_pico'         => $diaPico,
+                'hoy'              => $hoyStats ?: ['fecha' => $hoyFecha, 'total_recaudado' => 0.0, 'total_butacas' => 0],
+            ],
+            'dias'             => $diasList,
+            'usuarios'         => $usuariosList,
+            'asientos_detalle' => $asientosDetalle,
+        ]);
+    }
 }

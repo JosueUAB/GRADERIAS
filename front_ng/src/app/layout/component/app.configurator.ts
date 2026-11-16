@@ -10,7 +10,11 @@ import { PrimeNG } from 'primeng/config';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { LayoutService } from '@/app/layout/service/layout.service';
 import { environment } from '@/environments/environment';
-import { generarPaletaDesdeHex, construirPresetExt } from '@/app/core/helpers/tema.helper';
+import {
+    generarPaletaDesdeHex,
+    construirPresetExt,
+    PALETAS_SURFACE
+} from '@/app/core/helpers/tema.helper';
 
 const presets = {
     Aura,
@@ -43,78 +47,213 @@ declare type SurfacesType = {
     standalone: true,
     imports: [CommonModule, FormsModule, SelectButtonModule],
     template: `
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 text-xs">
+            <!-- 1. TEMAS RÁPIDOS ORURO (1-CLIC) -->
             <div>
-                <span class="text-sm text-muted-color font-semibold">Primary</span>
-                <div class="pt-2 flex gap-2 flex-wrap justify-start">
-                    @for (primaryColor of primaryColors(); track primaryColor.name) {
-                        <button
-                            type="button"
-                            [title]="primaryColor.name"
-                            (click)="updateColors($event, 'primary', primaryColor)"
-                            [ngClass]="{
-                                    'outline outline-primary': primaryColor.name === selectedPrimaryColor()
-                                }"
-                            class="cursor-pointer w-5 h-5 rounded-full flex shrink-0 items-center justify-center outline-offset-1 shadow"
-                            [style]="{
-                                    'background-color': primaryColor?.name === 'noir' ? 'var(--text-color)' : primaryColor?.palette?.['500']
-                                }"
-                        >
-                        </button>
-                    }
+                <div class="flex items-center justify-between pb-1">
+                    <span class="font-bold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                        Temas Oruro (1-Clic)
+                    </span>
+                    <span class="text-[10px] text-primary font-semibold">Alto Contraste</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 pt-1">
+                    <button
+                        type="button"
+                        (click)="aplicarTemaRapido('carmesi_oro')"
+                        class="flex items-center gap-2 p-2 rounded-xl text-left border border-surface hover:border-amber-400 bg-surface-50 dark:bg-surface-800 transition-all cursor-pointer"
+                        title="Fondo Carmesí Nocturno con Botones y Acentos en Dorado Carnaval"
+                    >
+                        <div class="w-4 h-4 rounded-full bg-[#eab308] border border-[#28050c] shadow-xs shrink-0"></div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="font-bold truncate text-surface-900 dark:text-surface-0">Carmesí & Oro</span>
+                            <span class="text-[10px] text-surface-400 truncate">Estilo Oficial</span>
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        (click)="aplicarTemaRapido('carmesi_blanco')"
+                        class="flex items-center gap-2 p-2 rounded-xl text-left border border-surface hover:border-slate-300 bg-surface-50 dark:bg-surface-800 transition-all cursor-pointer"
+                        title="Fondo Carmesí Nocturno con Botones y Acentos en Blanco Marfil"
+                    >
+                        <div class="w-4 h-4 rounded-full bg-[#ffffff] border border-[#28050c] shadow-xs shrink-0"></div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="font-bold truncate text-surface-900 dark:text-surface-0">Carmesí & Marfil</span>
+                            <span class="text-[10px] text-surface-400 truncate">Máximo Brillo</span>
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        (click)="aplicarTemaRapido('carmesi_rubi')"
+                        class="flex items-center gap-2 p-2 rounded-xl text-left border border-surface hover:border-rose-400 bg-surface-50 dark:bg-surface-800 transition-all cursor-pointer"
+                        title="Fondo Carmesí Nocturno con Acentos Rubí Radiante"
+                    >
+                        <div class="w-4 h-4 rounded-full bg-[#f43f5e] border border-[#28050c] shadow-xs shrink-0"></div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="font-bold truncate text-surface-900 dark:text-surface-0">Carmesí & Rubí</span>
+                            <span class="text-[10px] text-surface-400 truncate">Vino Elegante</span>
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        (click)="aplicarTemaRapido('slate_guindo')"
+                        class="flex items-center gap-2 p-2 rounded-xl text-left border border-surface hover:border-primary bg-surface-50 dark:bg-surface-800 transition-all cursor-pointer"
+                        title="Fondo Slate (Pizarra) con Acentos Guindo Oruro"
+                    >
+                        <div class="w-4 h-4 rounded-full bg-[#960023] border border-surface shadow-xs shrink-0"></div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="font-bold truncate text-surface-900 dark:text-surface-0">Pizarra Oruro</span>
+                            <span class="text-[10px] text-surface-400 truncate">Moderno</span>
+                        </div>
+                    </button>
                 </div>
             </div>
+
+            <!-- 2. FONDO / SUPERFICIE (SURFACE) -->
             <div>
-                <span class="text-sm text-muted-color font-semibold">Surface</span>
-                <div class="pt-2 flex gap-2 flex-wrap justify-start">
+                <div class="flex items-center justify-between pb-1">
+                    <span class="font-bold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                        Fondo / Superficie
+                    </span>
+                    <span class="text-[10px] text-surface-400 font-mono">{{ selectedSurfaceColor() || 'slate' }}</span>
+                </div>
+                <div class="pt-1 flex gap-2 flex-wrap items-center">
                     @for (surface of surfaces; track surface.name) {
                         <button
                             type="button"
                             [title]="surface.name"
                             (click)="updateColors($event, 'surface', surface)"
-                            class="cursor-pointer w-5 h-5 rounded-full flex shrink-0 items-center justify-center p-0 outline-offset-1"
+                            class="cursor-pointer w-6 h-6 rounded-full flex shrink-0 items-center justify-center p-0 outline-offset-2 transition-transform hover:scale-110 shadow-xs"
                             [ngClass]="{
-                                    'outline outline-primary': selectedSurfaceColor() ? selectedSurfaceColor() === surface.name : layoutService.layoutConfig().darkTheme ? surface.name === 'zinc' : surface.name === 'slate'
-                                }"
-                            [style]="{
-                                    'background-color': surface?.palette?.['500']
-                                }"
-                        ></button>
+                                'outline-2 outline-primary scale-110 shadow-md': selectedSurfaceColor() ? selectedSurfaceColor() === surface.name : surface.name === 'carmesi'
+                            }"
+                            [style.background-color]="surface?.palette?.['800'] || surface?.palette?.['500']"
+                        >
+                            @if (selectedSurfaceColor() === surface.name) {
+                                <i class="pi pi-check text-[10px] text-white"></i>
+                            }
+                        </button>
                     }
+
+                    <!-- Selector Personalizado Hex para Fondo -->
+                    <label
+                        class="cursor-pointer flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-primary hover:border-primary/80 relative overflow-hidden transition-transform hover:scale-110 shadow-xs"
+                        title="Elegir cualquier color Hexadecimal para el fondo"
+                    >
+                        <i class="pi pi-palette text-[11px] text-primary"></i>
+                        <input
+                            type="color"
+                            class="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                            [value]="surfaceHexValue()"
+                            (input)="onColorSurfacePersonalizado($event)"
+                        />
+                    </label>
                 </div>
             </div>
-            <div class="flex flex-col gap-2">
-                <span class="text-sm text-muted-color font-semibold">Presets</span>
-                <p-selectbutton [options]="presets" [ngModel]="selectedPreset()" (ngModelChange)="onPresetChange($event)" [allowEmpty]="false" size="small" />
+
+            <!-- 3. COLOR PRIMARIO / ACENTOS (PRIMARY) -->
+            <div>
+                <div class="flex items-center justify-between pb-1">
+                    <span class="font-bold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                        Color Primario (Botones / Acentos)
+                    </span>
+                    <span class="text-[10px] text-surface-400 font-mono">{{ selectedPrimaryColor() || '#960023' }}</span>
+                </div>
+                <div class="pt-1 flex gap-2 flex-wrap items-center">
+                    @for (primaryColor of primaryColors(); track primaryColor.name) {
+                        <button
+                            type="button"
+                            [title]="primaryColor.name"
+                            (click)="updateColors($event, 'primary', primaryColor)"
+                            class="cursor-pointer w-6 h-6 rounded-full flex shrink-0 items-center justify-center p-0 outline-offset-2 transition-transform hover:scale-110 shadow-xs"
+                            [ngClass]="{
+                                'outline-2 outline-primary scale-110 shadow-md': primaryColor.name === selectedPrimaryColor()
+                            }"
+                            [style.background-color]="primaryColor?.name === 'noir' ? 'var(--text-color)' : primaryColor?.palette?.['500']"
+                        >
+                            @if (selectedPrimaryColor() === primaryColor.name) {
+                                <i class="pi pi-check text-[10px] text-white"></i>
+                            }
+                        </button>
+                    }
+
+                    <!-- Selector Personalizado Hex para Primario -->
+                    <label
+                        class="cursor-pointer flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-primary hover:border-primary/80 relative overflow-hidden transition-transform hover:scale-110 shadow-xs"
+                        title="Elegir cualquier color Hexadecimal para los botones y acentos"
+                    >
+                        <i class="pi pi-pencil text-[11px] text-primary"></i>
+                        <input
+                            type="color"
+                            class="opacity-0 absolute inset-0 cursor-pointer w-full h-full"
+                            [value]="primaryHexValue()"
+                            (input)="onColorPrimarioPersonalizado($event)"
+                        />
+                    </label>
+                </div>
             </div>
-            <div *ngIf="showMenuModeButton()" class="flex flex-col gap-2">
-                <span class="text-sm text-muted-color font-semibold">Menu Mode</span>
-                <p-selectbutton [ngModel]="menuMode()" (ngModelChange)="onMenuModeChange($event)" [options]="menuModeOptions" [allowEmpty]="false" size="small" />
+
+            <!-- 4. PRESETS DE DISEÑO ESTRUCTURAL -->
+            <div class="flex flex-col gap-1.5">
+                <span class="font-bold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                    Estilo de Componentes
+                </span>
+                <p-selectbutton
+                    [options]="presets"
+                    [ngModel]="selectedPreset()"
+                    (ngModelChange)="onPresetChange($event)"
+                    [allowEmpty]="false"
+                    size="small"
+                />
+            </div>
+
+            <!-- 5. MODO DE MENÚ -->
+            <div *ngIf="showMenuModeButton()" class="flex flex-col gap-1.5">
+                <span class="font-bold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                    Menú Lateral
+                </span>
+                <p-selectbutton
+                    [ngModel]="menuMode()"
+                    (ngModelChange)="onMenuModeChange($event)"
+                    [options]="menuModeOptions"
+                    [allowEmpty]="false"
+                    size="small"
+                />
+            </div>
+
+            <!-- 6. BOTÓN RESTABLECER -->
+            <div class="pt-2 border-t border-surface flex items-center justify-between">
+                <span class="text-[10px] text-surface-400">Se guarda automáticamente</span>
+                <button
+                    type="button"
+                    (click)="restablecerDefecto()"
+                    class="text-xs text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer py-1"
+                >
+                    <i class="pi pi-refresh text-[10px]"></i>
+                    <span>Restablecer tema</span>
+                </button>
             </div>
         </div>
     `,
     host: {
-        class: 'hidden absolute top-13 right-0 w-72 p-4 bg-surface-0 dark:bg-surface-900 border border-surface rounded-border origin-top shadow-[0px_3px_5px_rgba(0,0,0,0.02),0px_0px_2px_rgba(0,0,0,0.05),0px_1px_4px_rgba(0,0,0,0.08)]'
+        class: 'hidden absolute top-13 right-0 w-84 max-w-[92vw] p-4 bg-surface-0 dark:bg-surface-900 border border-surface rounded-2xl origin-top shadow-2xl z-50 max-h-[85vh] overflow-y-auto'
     }
 })
 export class AppConfigurator {
     router = inject(Router);
-
     config: PrimeNG = inject(PrimeNG);
-
     layoutService: LayoutService = inject(LayoutService);
-
     platformId = inject(PLATFORM_ID);
-
     primeng = inject(PrimeNG);
 
     presets = Object.keys(presets);
-
     showMenuModeButton = signal(!this.router.url.includes('auth'));
 
     menuModeOptions = [
-        { label: 'Static', value: 'static' },
-        { label: 'Overlay', value: 'overlay' }
+        { label: 'Fijo (Static)', value: 'static' },
+        { label: 'Superpuesto (Overlay)', value: 'overlay' }
     ];
 
     ngOnInit() {
@@ -125,123 +264,32 @@ export class AppConfigurator {
 
     surfaces: SurfacesType[] = [
         {
-            name: 'slate',
-            palette: {
-                0: '#ffffff',
-                50: '#f8fafc',
-                100: '#f1f5f9',
-                200: '#e2e8f0',
-                300: '#cbd5e1',
-                400: '#94a3b8',
-                500: '#64748b',
-                600: '#475569',
-                700: '#334155',
-                800: '#1e293b',
-                900: '#0f172a',
-                950: '#020617'
-            }
+            name: 'carmesi',
+            palette: PALETAS_SURFACE['carmesi'] as any
         },
         {
-            name: 'gray',
-            palette: {
-                0: '#ffffff',
-                50: '#f9fafb',
-                100: '#f3f4f6',
-                200: '#e5e7eb',
-                300: '#d1d5db',
-                400: '#9ca3af',
-                500: '#6b7280',
-                600: '#4b5563',
-                700: '#374151',
-                800: '#1f2937',
-                900: '#111827',
-                950: '#030712'
-            }
+            name: 'guindo',
+            palette: PALETAS_SURFACE['guindo'] as any
+        },
+        {
+            name: 'slate',
+            palette: PALETAS_SURFACE['slate'] as any
         },
         {
             name: 'zinc',
-            palette: {
-                0: '#ffffff',
-                50: '#fafafa',
-                100: '#f4f4f5',
-                200: '#e4e4e7',
-                300: '#d4d4d8',
-                400: '#a1a1aa',
-                500: '#71717a',
-                600: '#52525b',
-                700: '#3f3f46',
-                800: '#27272a',
-                900: '#18181b',
-                950: '#09090b'
-            }
+            palette: PALETAS_SURFACE['zinc'] as any
+        },
+        {
+            name: 'gray',
+            palette: PALETAS_SURFACE['gray'] as any
         },
         {
             name: 'neutral',
-            palette: {
-                0: '#ffffff',
-                50: '#fafafa',
-                100: '#f5f5f5',
-                200: '#e5e5e5',
-                300: '#d4d4d4',
-                400: '#a3a3a3',
-                500: '#737373',
-                600: '#525252',
-                700: '#404040',
-                800: '#262626',
-                900: '#171717',
-                950: '#0a0a0a'
-            }
+            palette: PALETAS_SURFACE['neutral'] as any
         },
         {
             name: 'stone',
-            palette: {
-                0: '#ffffff',
-                50: '#fafaf9',
-                100: '#f5f5f4',
-                200: '#e7e5e4',
-                300: '#d6d3d1',
-                400: '#a8a29e',
-                500: '#78716c',
-                600: '#57534e',
-                700: '#44403c',
-                800: '#292524',
-                900: '#1c1917',
-                950: '#0c0a09'
-            }
-        },
-        {
-            name: 'soho',
-            palette: {
-                0: '#ffffff',
-                50: '#ececec',
-                100: '#dedfdf',
-                200: '#c4c4c6',
-                300: '#adaeb0',
-                400: '#97979b',
-                500: '#7f8084',
-                600: '#6a6b70',
-                700: '#55565b',
-                800: '#3f4046',
-                900: '#2c2c34',
-                950: '#16161d'
-            }
-        },
-        {
-            name: 'viva',
-            palette: {
-                0: '#ffffff',
-                50: '#f3f3f3',
-                100: '#e7e7e8',
-                200: '#cfd0d0',
-                300: '#b7b8b9',
-                400: '#9fa1a1',
-                500: '#87898a',
-                600: '#6e7173',
-                700: '#565a5b',
-                800: '#3e4244',
-                900: '#262b2c',
-                950: '#0e1315'
-            }
+            palette: PALETAS_SURFACE['stone'] as any
         },
         {
             name: 'ocean',
@@ -262,167 +310,64 @@ export class AppConfigurator {
         }
     ];
 
-    selectedPrimaryColor = computed(() => {
-        return this.layoutService.layoutConfig().primary;
+    selectedPrimaryColor = computed(() => this.layoutService.layoutConfig().primary);
+    selectedSurfaceColor = computed(() => this.layoutService.layoutConfig().surface);
+    selectedPreset = computed(() => this.layoutService.layoutConfig().preset);
+    menuMode = computed(() => this.layoutService.layoutConfig().menuMode);
+
+    primaryHexValue = computed(() => {
+        const val = this.selectedPrimaryColor();
+        return val && val.startsWith('#') ? val : '#960023';
     });
 
-    selectedSurfaceColor = computed(() => this.layoutService.layoutConfig().surface);
-
-    selectedPreset = computed(() => this.layoutService.layoutConfig().preset);
-
-    menuMode = computed(() => this.layoutService.layoutConfig().menuMode);
+    surfaceHexValue = computed(() => {
+        const val = this.selectedSurfaceColor();
+        return val && val.startsWith('#') ? val : '#28050c';
+    });
 
     primaryColors = computed<SurfacesType[]>(() => {
         const presetPalette = presets[this.layoutService.layoutConfig().preset as KeyOfType<typeof presets>].primitive;
-        const colors = ['emerald', 'green', 'lime', 'orange', 'amber', 'yellow', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'];
-        const envColor = environment.primaryColor;
+        const envColor = environment.primaryColor || '#960023';
+
         const palettes: SurfacesType[] = [
-            { name: envColor, palette: generarPaletaDesdeHex(envColor) as any },
+            { name: '#eab308', palette: generarPaletaDesdeHex('#eab308') as any }, // Dorado Carnaval
+            { name: envColor, palette: generarPaletaDesdeHex(envColor) as any },   // Carmesí Oruro
+            { name: '#f43f5e', palette: generarPaletaDesdeHex('#f43f5e') as any }, // Rosa Rubí brillante
+            { name: '#f8fafc', palette: generarPaletaDesdeHex('#f8fafc') as any }, // Blanco Marfil
+            { name: '#3b82f6', palette: generarPaletaDesdeHex('#3b82f6') as any }, // Azul Real
+            { name: 'emerald', palette: presetPalette?.['emerald' as KeyOfType<typeof presetPalette>] as any },
+            { name: 'amber', palette: presetPalette?.['amber' as KeyOfType<typeof presetPalette>] as any },
+            { name: 'violet', palette: presetPalette?.['violet' as KeyOfType<typeof presetPalette>] as any },
             { name: 'noir', palette: {} }
         ];
-
-        colors.forEach((color) => {
-            palettes.push({
-                name: color,
-                palette: presetPalette?.[color as KeyOfType<typeof presetPalette>] as SurfacesType['palette']
-            });
-        });
 
         return palettes;
     });
 
-    getPresetExt() {
-        const selected = this.selectedPrimaryColor();
-        if (selected && selected.startsWith('#')) {
-            return construirPresetExt(generarPaletaDesdeHex(selected));
-        }
+    aplicarTemaRapido(presetKey: 'carmesi_oro' | 'carmesi_blanco' | 'carmesi_rubi' | 'slate_guindo'): void {
+        this.layoutService.aplicarTemaPreconfigurado(presetKey);
+    }
 
-        const color: SurfacesType = this.primaryColors().find((c) => c.name === selected) || {};
-        const preset = this.layoutService.layoutConfig().preset;
+    onColorPrimaryChange(hex: string): void {
+        this.layoutService.actualizarColorPrimario(hex);
+    }
 
-        if (color.name === 'noir') {
-            return {
-                semantic: {
-                    primary: {
-                        50: '{surface.50}',
-                        100: '{surface.100}',
-                        200: '{surface.200}',
-                        300: '{surface.300}',
-                        400: '{surface.400}',
-                        500: '{surface.500}',
-                        600: '{surface.600}',
-                        700: '{surface.700}',
-                        800: '{surface.800}',
-                        900: '{surface.900}',
-                        950: '{surface.950}'
-                    },
-                    colorScheme: {
-                        light: {
-                            primary: {
-                                color: '{primary.950}',
-                                contrastColor: '#ffffff',
-                                hoverColor: '{primary.800}',
-                                activeColor: '{primary.700}'
-                            },
-                            highlight: {
-                                background: '{primary.950}',
-                                focusBackground: '{primary.700}',
-                                color: '#ffffff',
-                                focusColor: '#ffffff'
-                            }
-                        },
-                        dark: {
-                            primary: {
-                                color: '{primary.50}',
-                                contrastColor: '{primary.950}',
-                                hoverColor: '{primary.200}',
-                                activeColor: '{primary.300}'
-                            },
-                            highlight: {
-                                background: '{primary.50}',
-                                focusBackground: '{primary.300}',
-                                color: '{primary.950}',
-                                focusColor: '{primary.950}'
-                            }
-                        }
-                    }
-                }
-            };
-        } else {
-            if (preset === 'Nora') {
-                return {
-                    semantic: {
-                        primary: color.palette,
-                        colorScheme: {
-                            light: {
-                                primary: {
-                                    color: '{primary.600}',
-                                    contrastColor: '#ffffff',
-                                    hoverColor: '{primary.700}',
-                                    activeColor: '{primary.800}'
-                                },
-                                highlight: {
-                                    background: '{primary.600}',
-                                    focusBackground: '{primary.700}',
-                                    color: '#ffffff',
-                                    focusColor: '#ffffff'
-                                }
-                            },
-                            dark: {
-                                primary: {
-                                    color: '{primary.500}',
-                                    contrastColor: '{surface.900}',
-                                    hoverColor: '{primary.400}',
-                                    activeColor: '{primary.300}'
-                                },
-                                highlight: {
-                                    background: '{primary.500}',
-                                    focusBackground: '{primary.400}',
-                                    color: '{surface.900}',
-                                    focusColor: '{surface.900}'
-                                }
-                            }
-                        }
-                    }
-                };
-            } else {
-                return {
-                    semantic: {
-                        primary: color.palette,
-                        colorScheme: {
-                            light: {
-                                primary: {
-                                    color: '{primary.500}',
-                                    contrastColor: '#ffffff',
-                                    hoverColor: '{primary.600}',
-                                    activeColor: '{primary.700}'
-                                },
-                                highlight: {
-                                    background: '{primary.50}',
-                                    focusBackground: '{primary.100}',
-                                    color: '{primary.700}',
-                                    focusColor: '{primary.800}'
-                                }
-                            },
-                            dark: {
-                                primary: {
-                                    color: '{primary.400}',
-                                    contrastColor: '{surface.900}',
-                                    hoverColor: '{primary.300}',
-                                    activeColor: '{primary.200}'
-                                },
-                                highlight: {
-                                    background: 'color-mix(in srgb, {primary.400}, transparent 84%)',
-                                    focusBackground: 'color-mix(in srgb, {primary.400}, transparent 76%)',
-                                    color: 'rgba(255,255,255,.87)',
-                                    focusColor: 'rgba(255,255,255,.87)'
-                                }
-                            }
-                        }
-                    }
-                };
-            }
-        }
+    onColorSurfaceChange(hex: string): void {
+        this.layoutService.actualizarSuperficie(hex);
+    }
+
+    onColorPrimarioPersonalizado(event: Event): void {
+        const hex = (event.target as HTMLInputElement).value;
+        this.layoutService.actualizarColorPrimario(hex);
+    }
+
+    onColorSurfacePersonalizado(event: Event): void {
+        const hex = (event.target as HTMLInputElement).value;
+        this.layoutService.actualizarSuperficie(hex);
+    }
+
+    restablecerDefecto(): void {
+        this.layoutService.restablecerValoresPorDefecto();
     }
 
     updateColors(event: any, type: string, color: any) {
@@ -432,14 +377,6 @@ export class AppConfigurator {
             this.layoutService.actualizarSuperficie(color.name);
         }
         event.stopPropagation();
-    }
-
-    applyTheme(type: string, color: any) {
-        if (type === 'primary') {
-            updatePreset(this.getPresetExt());
-        } else if (type === 'surface') {
-            updateSurfacePalette(color.palette);
-        }
     }
 
     onPresetChange(event: any) {

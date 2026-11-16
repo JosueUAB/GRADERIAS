@@ -7,10 +7,12 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { TagModule } from 'primeng/tag';
 import { Graderia, CrearGraderiaDTO, ActualizarGraderiaDTO } from '@/app/core/interfaces/graderia.interface';
 import { GraderiaStore } from '@/app/core/store/graderia.store';
 import { NotificacionService } from '@/app/core/services/notificacion.service';
 import { GraderiaPreviewMatrizComponent } from '../graderia-preview-matriz/graderia-preview-matriz.component';
+import { MapaCoordenadasDialogComponent } from '../mapa-coordenadas-dialog/mapa-coordenadas-dialog.component';
 
 @Component({
     selector: 'app-graderia-form',
@@ -24,7 +26,9 @@ import { GraderiaPreviewMatrizComponent } from '../graderia-preview-matriz/grade
         InputNumberModule,
         SelectModule,
         ToggleSwitchModule,
-        GraderiaPreviewMatrizComponent
+        TagModule,
+        GraderiaPreviewMatrizComponent,
+        MapaCoordenadasDialogComponent
     ],
     templateUrl: './graderia-form.component.html'
 })
@@ -34,12 +38,16 @@ export class GraderiaFormComponent implements OnInit {
 
     visible = input<boolean>(false);
     graderia = input<Graderia | null>(null);
+    coordenadasIniciales = input<{ latitud: number; longitud: number } | null>(null);
 
     @Output() visibleChange = new EventEmitter<boolean>();
     @Output() guardado = new EventEmitter<Graderia>();
 
     nombre: string = '';
     direccion: string = '';
+    latitud: number | null = null;
+    longitud: number | null = null;
+    mostrarMapaPicker: boolean = false;
     filas: number = 10;
     columnas: number = 20;
     etiquetaModo: 'fila' | 'columna' = 'fila';
@@ -76,6 +84,8 @@ export class GraderiaFormComponent implements OnInit {
             this.esEdicion.set(true);
             this.nombre = g.nombre || '';
             this.direccion = g.direccion || '';
+            this.latitud = g.latitud != null ? Number(g.latitud) : null;
+            this.longitud = g.longitud != null ? Number(g.longitud) : null;
             this.filas = Number(g.filas) || 10;
             this.columnas = Number(g.columnas) || 20;
             this.etiquetaModo = g.etiqueta_modo || 'fila';
@@ -87,6 +97,9 @@ export class GraderiaFormComponent implements OnInit {
             this.esEdicion.set(false);
             this.nombre = '';
             this.direccion = '';
+            const initCoords = this.coordenadasIniciales();
+            this.latitud = initCoords ? initCoords.latitud : null;
+            this.longitud = initCoords ? initCoords.longitud : null;
             this.filas = 10;
             this.columnas = 20;
             this.etiquetaModo = 'fila';
@@ -95,6 +108,16 @@ export class GraderiaFormComponent implements OnInit {
             this.activo = true;
             this.regenerarAsientos = false;
         }
+    }
+
+    onCoordenadasConfirmadas(coords: { latitud: number; longitud: number }) {
+        this.latitud = coords.latitud;
+        this.longitud = coords.longitud;
+    }
+
+    limpiarCoordenadas() {
+        this.latitud = null;
+        this.longitud = null;
     }
 
     modificarFilas(delta: number) {
@@ -122,6 +145,8 @@ export class GraderiaFormComponent implements OnInit {
             const dto: ActualizarGraderiaDTO = {
                 nombre: this.nombre.trim(),
                 direccion: this.direccion.trim(),
+                latitud: this.latitud,
+                longitud: this.longitud,
                 filas: this.filas,
                 columnas: this.columnas,
                 etiqueta_modo: this.etiquetaModo,
@@ -145,6 +170,8 @@ export class GraderiaFormComponent implements OnInit {
             const dto: CrearGraderiaDTO = {
                 nombre: this.nombre.trim(),
                 direccion: this.direccion.trim(),
+                latitud: this.latitud,
+                longitud: this.longitud,
                 filas: this.filas,
                 columnas: this.columnas,
                 etiqueta_modo: this.etiquetaModo,

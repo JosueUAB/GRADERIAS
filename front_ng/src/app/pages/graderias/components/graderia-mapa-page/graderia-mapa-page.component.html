@@ -1,0 +1,535 @@
+<div class="flex flex-col gap-4">
+    <!-- Encabezado Principal y Barra de Herramientas -->
+    <div class="card border border-surface-200 dark:border-surface-800 rounded-3xl p-4 sm:p-5 bg-surface-0 dark:bg-surface-900 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl shrink-0">
+                <i class="pi pi-map-marker"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="text-xl sm:text-2xl font-black text-surface-900 dark:text-surface-0 tracking-tight">
+                        Mapa de Graderías
+                    </h1>
+                    @if (authStore.esAdmin()) {
+                        <p-tag severity="contrast" value="Modo Administrador: Viendo todas las graderías" icon="pi pi-shield" />
+                    } @else {
+                        <p-tag severity="info" [value]="'Mis Graderías Asignadas (' + store.totalGraderias() + ')'" icon="pi pi-user" />
+                    }
+                </div>
+                <p class="text-xs sm:text-sm text-surface-500 dark:text-surface-400 mt-0.5">
+                    Visualización geoespacial de graderías, aforo en vivo y control de ocupación en tiempo real.
+                </p>
+            </div>
+        </div>
+
+        <!-- Botones de Acción Global -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <!-- Botón Modo Crear Gradería en el Mapa -->
+            <button
+                type="button"
+                pButton
+                [label]="modoCreacion() ? 'Cancelar Modo Crear' : 'Crear Gradería en Mapa'"
+                [icon]="modoCreacion() ? 'pi pi-times' : 'pi pi-plus-circle'"
+                class="p-button-sm rounded-xl font-bold shadow-xs transition-all"
+                [ngClass]="modoCreacion() ? 'p-button-danger' : 'p-button-success'"
+                (click)="alternarModoCreacion()"
+                [pTooltip]="modoCreacion() ? 'Desactivar modo creación' : 'Haz clic para seleccionar un punto en el mapa y crear una gradería'"
+            ></button>
+
+            <button
+                type="button"
+                pButton
+                [label]="panelLateralVisible() ? 'Ocultar Lista' : 'Ver Lista'"
+                [icon]="panelLateralVisible() ? 'pi pi-chevron-left' : 'pi pi-bars'"
+                class="p-button-outlined p-button-sm rounded-xl font-medium"
+                (click)="alternarPanelLateral()"
+            ></button>
+
+            <button
+                type="button"
+                pButton
+                label="Centrar en Oruro"
+                icon="pi pi-compass"
+                class="p-button-outlined p-button-sm rounded-xl font-medium"
+                (click)="centrarMapa()"
+                pTooltip="Centrar vista en Oruro"
+            ></button>
+
+            <button
+                type="button"
+                pButton
+                [label]="vista3D() ? 'Vista 2D Plana' : 'Inclinación 3D'"
+                icon="pi pi-box"
+                class="p-button-outlined p-button-sm rounded-xl font-medium"
+                [class.p-button-primary]="vista3D()"
+                (click)="alternarVista3D()"
+            ></button>
+
+            <button
+                type="button"
+                pButton
+                [label]="tipoCapa() === 'vector' ? 'Capa: Vectorial' : 'Capa: OSM Estándar'"
+                [icon]="tipoCapa() === 'vector' ? 'pi pi-map' : 'pi pi-globe'"
+                class="p-button-outlined p-button-sm rounded-xl font-medium"
+                [class.p-button-info]="tipoCapa() === 'raster'"
+                (click)="alternarTipoCapa()"
+                [pTooltip]="tipoCapa() === 'vector' ? 'Cambiar a capa estándar OpenStreetMap (máxima compatibilidad)' : 'Cambiar a capa vectorial de alta resolución'"
+            ></button>
+
+            <button
+                type="button"
+                pButton
+                label="Vista Tabla"
+                icon="pi pi-table"
+                class="p-button-text p-button-sm rounded-xl font-medium"
+                [routerLink]="['/graderias']"
+            ></button>
+
+            <button
+                type="button"
+                pButton
+                label="Diseñar Gradería"
+                icon="pi pi-plus"
+                class="p-button-primary p-button-sm rounded-xl font-bold shadow-xs"
+                [routerLink]="['/graderias/nueva']"
+            ></button>
+        </div>
+    </div>
+
+    <!-- Contenedor Maestro: Panel Lateral + Lienzo del Mapa -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        
+        <!-- Panel Lateral Desplegable (4 cols en Desktop) -->
+        @if (panelLateralVisible()) {
+            <div class="lg:col-span-4 flex flex-col gap-3">
+                <div class="card border border-surface-200 dark:border-surface-800 rounded-3xl p-4 bg-surface-0 dark:bg-surface-900 shadow-xs flex flex-col gap-3.5">
+                    
+                    <!-- Buscador -->
+                    <div class="relative w-full">
+                        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
+                        <input
+                            pInputText
+                            type="text"
+                            [(ngModel)]="filtroBusqueda"
+                            placeholder="Buscar por gradería, sector u operador..."
+                            class="w-full pl-9 pr-3 py-2 text-sm rounded-xl"
+                        />
+                    </div>
+
+                    <!-- Pestañas de Filtrado Rápido -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button
+                            type="button"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                            [ngClass]="filtroTipo() === 'todas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            (click)="filtroTipo.set('todas')"
+                        >
+                            Todas ({{ store.totalGraderias() }})
+                        </button>
+                        <button
+                            type="button"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                            [ngClass]="filtroTipo() === 'con_coordenadas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            (click)="filtroTipo.set('con_coordenadas')"
+                        >
+                            En Mapa ({{ totalConCoords() }})
+                        </button>
+                        <button
+                            type="button"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                            [ngClass]="filtroTipo() === 'sin_coordenadas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            (click)="filtroTipo.set('sin_coordenadas')"
+                        >
+                            Sin Punto ({{ totalSinCoords() }})
+                        </button>
+                        <button
+                            type="button"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                            [ngClass]="filtroTipo() === 'alta_ocupacion' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            (click)="filtroTipo.set('alta_ocupacion')"
+                        >
+                            Alta Demanda (≥70%)
+                        </button>
+                    </div>
+
+                    <!-- Lista de Graderías con Scroll Independiente -->
+                    <div class="flex flex-col gap-2 max-h-[600px] overflow-y-auto pr-1">
+                        @if (store.cargando()) {
+                            <div class="py-8 text-center text-surface-400">
+                                <i class="pi pi-spin pi-spinner text-2xl"></i>
+                                <p class="text-xs mt-2">Cargando graderías...</p>
+                            </div>
+                        } @else if (graderiasFiltradas().length === 0) {
+                            <div class="py-8 text-center text-surface-400">
+                                <i class="pi pi-map text-3xl"></i>
+                                <p class="text-xs font-semibold mt-2">No se encontraron graderías</p>
+                                <p class="text-[11px] text-surface-500">Prueba ajustando los filtros de búsqueda</p>
+                            </div>
+                        } @else {
+                            @for (g of graderiasFiltradas(); track g.id) {
+                                <div
+                                    class="p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 hover:border-primary/50"
+                                    [ngClass]="graderiaEnFoco()?.id === g.id ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-xs' : 'bg-surface-50/60 dark:bg-surface-800/40 border-surface-200 dark:border-surface-800'"
+                                    (click)="seleccionarGraderia(g)"
+                                >
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <div
+                                                class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
+                                                [ngClass]="calcularPorcentajeOcupacion(g) >= 70 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'"
+                                            >
+                                                <i class="pi pi-map-marker"></i>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <h4 class="text-sm font-bold text-surface-900 dark:text-surface-0 truncate leading-snug">
+                                                    {{ g.nombre }}
+                                                </h4>
+                                                @if (g.direccion) {
+                                                    <p class="text-[11px] text-surface-500 truncate">
+                                                        <i class="pi pi-compass text-[10px] mr-1"></i>{{ g.direccion }}
+                                                    </p>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <!-- Badge de Ocupación -->
+                                        <span
+                                            class="text-xs font-bold px-2 py-0.5 rounded-full shrink-0"
+                                            [ngClass]="calcularPorcentajeOcupacion(g) >= 70 ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-primary/10 text-primary'"
+                                        >
+                                            {{ calcularPorcentajeOcupacion(g) }}%
+                                        </span>
+                                    </div>
+
+                                    <!-- Operador y Butacas -->
+                                    <div class="flex items-center justify-between text-xs text-surface-600 dark:text-surface-300 pt-1 border-t border-surface-200/60 dark:border-surface-700/60">
+                                        <div class="flex items-center gap-1.5 truncate">
+                                            @if (g.user) {
+                                                <i class="pi pi-user text-surface-400 text-[11px]"></i>
+                                                <span class="truncate text-[11px] font-medium">{{ g.user.name }}</span>
+                                            }
+                                        </div>
+
+                                        <div class="flex items-center gap-2 text-[11px] shrink-0">
+                                            <span><strong>{{ g.capacidad_total || (g.filas * g.columnas) }}</strong> butacas</span>
+                                            @if (g.latitud != null && g.longitud != null) {
+                                                <span class="text-emerald-500" pTooltip="Ubicada en mapa">
+                                                    <i class="pi pi-check-circle"></i>
+                                                </span>
+                                            } @else {
+                                                <button
+                                                    type="button"
+                                                    class="text-amber-500 hover:text-amber-600 text-[10px] font-semibold underline"
+                                                    (click)="$event.stopPropagation(); abrirEditorCoordenadas(g)"
+                                                >
+                                                    + Asignar Punto
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                </div>
+            </div>
+        }
+
+        <!-- Lienzo Principal del Mapa (8 o 12 cols según sidebar) -->
+        <div [ngClass]="panelLateralVisible() ? 'lg:col-span-8' : 'lg:col-span-12'" class="relative flex flex-col">
+            
+            <div class="relative w-full h-[620px] rounded-3xl overflow-hidden border border-surface-200 dark:border-surface-800 shadow-md bg-surface-100 dark:bg-surface-950">
+                
+                <!-- Notificación Flotante Superior si Modo Creación está activo -->
+                @if (modoCreacion()) {
+                    <div class="absolute top-3 left-4 right-4 z-20 bg-emerald-600 text-white px-4 py-2.5 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-fadein border border-emerald-400/40">
+                        <div class="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+                            <i class="pi pi-map-marker text-base animate-bounce"></i>
+                            <span>Haz clic en cualquier punto del mapa para fijar la ubicación de la nueva gradería.</span>
+                        </div>
+                        <button
+                            type="button"
+                            pButton
+                            icon="pi pi-times"
+                            class="p-button-text p-button-sm text-white p-0 w-6 h-6 rounded-full hover:bg-emerald-700"
+                            (click)="alternarModoCreacion()"
+                            pTooltip="Cancelar modo creación"
+                        ></button>
+                    </div>
+                }
+
+                <!-- Contenedor del Mapa MapLibre -->
+                <div #mapContainer class="w-full h-full" [class.cursor-crosshair]="modoCreacion()" [ngClass]="{ 'map-dark-raster': layoutService.isDarkTheme() && tipoCapa() === 'raster' }"></div>
+
+                <!-- Tarjeta Flotante al seleccionar un punto nuevo para crear gradería -->
+                @if (puntoCreacion(); as punto) {
+                    <div class="absolute top-4 left-4 right-4 sm:right-auto sm:w-[350px] z-30 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border-2 border-emerald-500 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-fadein">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="pi pi-plus"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-black text-surface-900 dark:text-surface-0">
+                                        Crear Gradería Aquí
+                                    </h3>
+                                    <p class="text-[11px] text-surface-500 font-mono">
+                                        Lat: {{ punto.latitud | number:'1.5-5' }}, Lng: {{ punto.longitud | number:'1.5-5' }}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                pButton
+                                icon="pi pi-times"
+                                class="p-button-text p-button-secondary p-button-sm p-0 w-7 h-7 rounded-full shrink-0"
+                                (click)="limpiarPuntoCreacion()"
+                                pTooltip="Cerrar punto"
+                            ></button>
+                        </div>
+
+                        <p class="text-xs text-surface-600 dark:text-surface-300">
+                            Punto fijado en el mapa. Selecciona cómo deseas crear la gradería con estas coordenadas:
+                        </p>
+
+                        <div class="flex flex-col gap-2 pt-1 border-t border-surface-200 dark:border-surface-700">
+                            <button
+                                type="button"
+                                pButton
+                                label="Crear Gradería (Rápido)"
+                                icon="pi pi-check"
+                                class="p-button-primary w-full rounded-xl font-bold text-xs py-2 shadow-xs"
+                                (click)="abrirModalCrearEnPunto()"
+                            ></button>
+
+                            <button
+                                type="button"
+                                pButton
+                                label="Diseñar en Página Completa"
+                                icon="pi pi-external-link"
+                                class="p-button-outlined p-button-secondary w-full rounded-xl font-semibold text-xs py-1.5"
+                                (click)="disenarEnPaginaNueva()"
+                            ></button>
+                        </div>
+                    </div>
+                }
+
+                <!-- Tarjeta Flotante con el Detalle Completo de la Gradería Seleccionada -->
+                @if (graderiaSeleccionada(); as sel) {
+                    <div class="absolute top-4 left-4 right-4 sm:right-auto sm:w-[370px] z-20 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border border-surface-200 dark:border-surface-700 rounded-3xl p-4 shadow-2xl flex flex-col gap-3.5 animate-fadein">
+                        
+                        <!-- Encabezado de la Tarjeta -->
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-base font-black text-surface-900 dark:text-surface-0 truncate leading-snug">
+                                        {{ sel.nombre }}
+                                    </h3>
+                                    <p-tag
+                                        [severity]="sel.activo ? 'success' : 'warn'"
+                                        [value]="sel.activo ? 'Activa' : 'Inactiva'"
+                                    />
+                                </div>
+                                @if (sel.direccion) {
+                                    <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5 truncate">
+                                        <i class="pi pi-compass text-[10px] mr-1"></i>{{ sel.direccion }}
+                                    </p>
+                                }
+                            </div>
+
+                            <!-- Botón cerrar ficha SIN perder el pin en el mapa -->
+                            <button
+                                type="button"
+                                pButton
+                                icon="pi pi-times"
+                                class="p-button-text p-button-secondary p-button-sm p-0 w-7 h-7 rounded-full shrink-0"
+                                (click)="cerrarCardDetalle()"
+                                pTooltip="Minimizar ficha (el pin seguirá visible en el mapa)"
+                            ></button>
+                        </div>
+
+                        <!-- Información del Operador Asignado -->
+                        @if (sel.user) {
+                            <div class="flex items-center gap-2.5 bg-surface-50 dark:bg-surface-800 p-2.5 rounded-2xl border border-surface-200 dark:border-surface-700">
+                                <p-avatar
+                                    [label]="sel.user.name.charAt(0).toUpperCase()"
+                                    shape="circle"
+                                    styleClass="bg-primary/20 text-primary font-bold text-xs"
+                                />
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs font-bold text-surface-900 dark:text-surface-0 truncate">
+                                        {{ sel.user.name }}
+                                    </p>
+                                    <p class="text-[11px] text-surface-500 truncate">
+                                        &#64;{{ sel.user.username }} · {{ sel.user.role }}
+                                    </p>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Barra de Progreso y Porcentaje de Ocupación -->
+                        <div class="flex flex-col gap-1.5">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-semibold text-surface-600 dark:text-surface-300">Nivel de Ocupación</span>
+                                <span class="font-black text-primary">{{ calcularPorcentajeOcupacion(sel) }}%</span>
+                            </div>
+                            <p-progressBar
+                                [value]="calcularPorcentajeOcupacion(sel)"
+                                [showValue]="false"
+                                styleClass="h-2 rounded-full"
+                            />
+                        </div>
+
+                        <!-- Métricas Clave de Butacas en Grilla -->
+                        <div class="grid grid-cols-4 gap-1.5 text-center">
+                            <div class="p-2 rounded-xl bg-surface-50 dark:bg-surface-800/80 border border-surface-200 dark:border-surface-700">
+                                <span class="text-[10px] text-surface-400 font-semibold block">Aforo</span>
+                                <span class="text-xs font-bold text-surface-900 dark:text-surface-0">
+                                    {{ sel.capacidad_total || (sel.filas * sel.columnas) }}
+                                </span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                <span class="text-[10px] text-emerald-600 font-semibold block">Pagadas</span>
+                                <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                                    {{ sel.pagados_count || 0 }}
+                                </span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                <span class="text-[10px] text-amber-600 font-semibold block">Reservas</span>
+                                <span class="text-xs font-bold text-amber-700 dark:text-amber-400">
+                                    {{ sel.reservados_count || 0 }}
+                                </span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                                <span class="text-[10px] text-blue-600 font-semibold block">Libres</span>
+                                <span class="text-xs font-bold text-blue-700 dark:text-blue-400">
+                                    {{ calcularLibres(sel) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Acción de la Gradería -->
+                        <div class="flex flex-col gap-2 pt-1 border-t border-surface-200 dark:border-surface-700">
+                            <button
+                                type="button"
+                                pButton
+                                label="Gestionar Venta de Butacas"
+                                icon="pi pi-ticket"
+                                class="p-button-primary w-full rounded-xl font-bold text-xs py-2 shadow-xs"
+                                (click)="gestionarVentas(sel)"
+                            ></button>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    pButton
+                                    label="Ver Matriz"
+                                    icon="pi pi-th-large"
+                                    class="p-button-outlined p-button-sm rounded-xl font-semibold text-xs py-1.5"
+                                    (click)="abrirMatrizDetalle(sel)"
+                                ></button>
+
+                                <button
+                                    type="button"
+                                    pButton
+                                    label="Editar Punto"
+                                    icon="pi pi-map"
+                                    class="p-button-outlined p-button-secondary p-button-sm rounded-xl font-semibold text-xs py-1.5"
+                                    (click)="abrirEditorCoordenadas(sel)"
+                                ></button>
+                            </div>
+
+                            @if (sel.latitud != null && sel.longitud != null) {
+                                <button
+                                    type="button"
+                                    class="text-[11px] text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 flex items-center justify-center gap-1.5 py-1"
+                                    (click)="copiarUbicacion(sel)"
+                                >
+                                    <i class="pi pi-copy text-[10px]"></i>
+                                    <span>Copiar GPS: {{ sel.latitud.toFixed(5) }}, {{ sel.longitud.toFixed(5) }}</span>
+                                </button>
+                            }
+                        </div>
+
+                    </div>
+                }
+
+                <!-- Barra Flotante de Persistencia del Pin Enfocado (visible cuando la tarjeta grande se cierra) -->
+                @if (graderiaEnFoco(); as foco) {
+                    @if (!graderiaSeleccionada()) {
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-surface-900/90 text-white px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md border border-white/20 animate-fadein">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                                <span class="text-xs font-bold">{{ foco.nombre }}</span>
+                                <span class="text-[11px] text-white/60 font-mono">
+                                    {{ foco.latitud | number:'1.4-4' }}, {{ foco.longitud | number:'1.4-4' }}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                class="px-2.5 py-1 text-xs font-bold rounded-lg bg-primary hover:bg-primary-emphasis text-white transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                                (click)="reabrirDetalle(foco)"
+                            >
+                                <i class="pi pi-eye text-[10px]"></i>
+                                <span>Ver Ficha</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="text-white/60 hover:text-white text-xs p-1 cursor-pointer"
+                                (click)="quitarFoco()"
+                                pTooltip="Quitar foco"
+                            >
+                                <i class="pi pi-times"></i>
+                            </button>
+                        </div>
+                    }
+                }
+
+                <!-- Barra Flotante de Leyenda y Estado en la esquina inferior izquierda -->
+                <div class="absolute bottom-4 left-4 z-10 bg-surface-900/85 backdrop-blur-md text-white px-3.5 py-2 rounded-2xl shadow-lg border border-white/10 flex items-center gap-3 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span>≥70% Alta</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                        <span>30-69% Media</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                        <span>&lt;30% Libre</span>
+                    </div>
+                    <span class="text-white/40">|</span>
+                    <span class="text-white/70 text-[11px]">MapLibre + OpenFreeMap</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal Detalle en Vivo de la Matriz de Asientos -->
+<app-graderia-detalle
+    [(visible)]="modalDetalleVisible"
+    [graderia]="graderiaSeleccionada() || graderiaEnFoco()"
+></app-graderia-detalle>
+
+<!-- Modal Editor de Coordenadas -->
+<app-mapa-coordenadas-dialog
+    [(visible)]="modalCoordenadasVisible"
+    [latitud]="graderiaParaCoordenadas()?.latitud"
+    [longitud]="graderiaParaCoordenadas()?.longitud"
+    [nombreGraderia]="graderiaParaCoordenadas()?.nombre || ''"
+    (coordenadasConfirmadas)="guardarNuevasCoordenadas($event)"
+></app-mapa-coordenadas-dialog>
+
+<!-- Modal Formulario para Crear Nueva Gradería desde el Mapa -->
+<app-graderia-form
+    [visible]="modalCrearFormVisible()"
+    (visibleChange)="modalCrearFormVisible.set($event)"
+    [coordenadasIniciales]="puntoCreacion()"
+    (guardado)="onGraderiaCreada($event)"
+></app-graderia-form>
