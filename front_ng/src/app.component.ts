@@ -4,15 +4,17 @@ import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { filter } from 'rxjs';
+import { PwaInstallBannerComponent } from '@/app/layout/component/pwa-install-banner.component';
 
 @Component({
     selector: 'app-root',
     standalone: true,
-    imports: [RouterModule, ToastModule, ConfirmDialogModule],
+    imports: [RouterModule, ToastModule, ConfirmDialogModule, PwaInstallBannerComponent],
     template: `
         <p-toast position="top-right" />
         <p-confirmdialog />
         <router-outlet></router-outlet>
+        <app-pwa-install-banner />
     `
 })
 export class AppComponent implements OnInit, OnDestroy {

@@ -10,6 +10,7 @@ import { LayoutService } from '@/app/layout/service/layout.service';
 import { AuthStore } from '@/app/core/store/auth.store';
 import { UsuarioService } from '@/app/core/services/usuario.service';
 import { NotificacionService } from '@/app/core/services/notificacion.service';
+import { PwaService } from '@/app/core/services/pwa.service';
 
 @Component({
     selector: 'app-topbar',
@@ -29,6 +30,7 @@ export class AppTopbar {
     layoutService = inject(LayoutService);
     authStore = inject(AuthStore);
     notificacion = inject(NotificacionService);
+    pwaService = inject(PwaService);
     private usuarioService = inject(UsuarioService);
 
     obtenerAvatar(avatar?: string | null): string {

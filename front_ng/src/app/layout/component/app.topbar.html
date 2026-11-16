@@ -21,6 +21,19 @@
 
     <!-- Acciones Superiores Derecha -->
     <div class="layout-topbar-actions flex items-center gap-2 sm:gap-3">
+        <!-- Botón Instalar App Móvil (PWA) -->
+        @if (pwaService.canInstall() && !pwaService.isInstalled()) {
+            <button
+                type="button"
+                class="layout-topbar-action text-primary hover:bg-primary/10 transition-colors"
+                (click)="pwaService.abrirModalManual()"
+                [pTooltip]="'Instalar Aplicación en este dispositivo'"
+                tooltipPosition="bottom"
+            >
+                <i class="pi pi-mobile text-lg"></i>
+            </button>
+        }
+
         <!-- Selector Modo Oscuro / Modo Claro -->
         <button
             type="button"
