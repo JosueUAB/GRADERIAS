@@ -15,6 +15,14 @@
                     } @else {
                         <p-tag severity="info" [value]="'Mis Graderías Asignadas (' + store.totalGraderias() + ')'" icon="pi pi-user" />
                     }
+
+                    @if (rutaStore.tieneRutaActiva()) {
+                        <p-tag
+                            [value]="'Ruta Oficial: ' + rutaStore.nombreRutaActiva() + ' (Margen: ' + rutaStore.toleranciaMetros() + 'm)'"
+                            icon="pi pi-compass"
+                            [pTooltip]="'Las graderías solo pueden instalarse a un máximo de ' + rutaStore.toleranciaMetros() + 'm del recorrido oficial.'"
+                        />
+                    }
                 </div>
                 <p class="text-xs sm:text-sm text-surface-500 dark:text-surface-400 mt-0.5">
                     Visualización geoespacial de graderías, aforo en vivo y control de ocupación en tiempo real.
@@ -24,17 +32,55 @@
 
         <!-- Botones de Acción Global -->
         <div class="flex items-center gap-2 flex-wrap">
+            <!-- Botón Administrador: Trazar Recorrido Oficial -->
+            @if (authStore.esAdmin()) {
+                <button
+                    type="button"
+                    pButton
+                    [label]="modoTrazadoRuta() ? 'Cancelar Trazado' : (rutaStore.tieneRutaActiva() ? 'Editar Ruta Oficial' : 'Trazar Ruta Oficial')"
+                    [icon]="modoTrazadoRuta() ? 'pi pi-times' : 'pi pi-pencil'"
+                    class="p-button-sm rounded-xl font-bold shadow-xs transition-all"
+                    [ngClass]="modoTrazadoRuta() ? 'p-button-outlined p-button-secondary' : 'p-button-primary'"
+                    (click)="modoTrazadoRuta() ? cancelarTrazadoRuta() : iniciarTrazadoRuta()"
+                    [pTooltip]="modoTrazadoRuta() ? 'Salir del modo trazado de ruta' : 'Solo Administrador: Trazar el recorrido oficial del carnaval para delimitar la colocación de graderías'"
+                ></button>
+            }
+
+            @if (rutaStore.tieneRutaActiva()) {
+                <button
+                    type="button"
+                    pButton
+                    [label]="mostrarRutaOficial() ? 'Ocultar Ruta' : 'Ver Ruta'"
+                    [icon]="mostrarRutaOficial() ? 'pi pi-eye-slash' : 'pi pi-eye'"
+                    class="p-button-outlined p-button-sm rounded-xl font-medium"
+                    (click)="alternarVisibilidadRuta()"
+                    pTooltip="Alternar visibilidad del recorrido oficial"
+                ></button>
+
+                <button
+                    type="button"
+                    pButton
+                    label="Enfocar Ruta"
+                    icon="pi pi-search-plus"
+                    class="p-button-outlined p-button-sm rounded-xl font-medium"
+                    (click)="ajustarVistaARuta()"
+                    pTooltip="Ajustar el zoom para ver toda la ruta oficial"
+                ></button>
+            }
+
             <!-- Botón Modo Crear Gradería en el Mapa -->
-            <button
-                type="button"
-                pButton
-                [label]="modoCreacion() ? 'Cancelar Modo Crear' : 'Crear Gradería en Mapa'"
-                [icon]="modoCreacion() ? 'pi pi-times' : 'pi pi-plus-circle'"
-                class="p-button-sm rounded-xl font-bold shadow-xs transition-all"
-                [ngClass]="modoCreacion() ? 'p-button-danger' : 'p-button-success'"
-                (click)="alternarModoCreacion()"
-                [pTooltip]="modoCreacion() ? 'Desactivar modo creación' : 'Haz clic para seleccionar un punto en el mapa y crear una gradería'"
-            ></button>
+            @if (!modoTrazadoRuta()) {
+                <button
+                    type="button"
+                    pButton
+                    [label]="modoCreacion() ? 'Cancelar Modo Crear' : 'Crear Gradería en Mapa'"
+                    [icon]="modoCreacion() ? 'pi pi-times' : 'pi pi-plus-circle'"
+                    class="p-button-sm rounded-xl font-bold shadow-xs transition-all"
+                    [ngClass]="modoCreacion() ? 'p-button-danger' : 'p-button-success'"
+                    (click)="alternarModoCreacion()"
+                    [pTooltip]="modoCreacion() ? 'Desactivar modo creación' : 'Haz clic para seleccionar un punto en el mapa y crear una gradería'"
+                ></button>
+            }
 
             <button
                 type="button"
@@ -120,63 +166,59 @@
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <button
                             type="button"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
-                            [ngClass]="filtroTipo() === 'todas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                            [ngClass]="filtroTipo() === 'todas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200'"
                             (click)="filtroTipo.set('todas')"
                         >
                             Todas ({{ store.totalGraderias() }})
                         </button>
                         <button
                             type="button"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
-                            [ngClass]="filtroTipo() === 'con_coordenadas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                            [ngClass]="filtroTipo() === 'con_coordenadas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200'"
                             (click)="filtroTipo.set('con_coordenadas')"
                         >
                             En Mapa ({{ totalConCoords() }})
                         </button>
                         <button
                             type="button"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
-                            [ngClass]="filtroTipo() === 'sin_coordenadas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                            [ngClass]="filtroTipo() === 'sin_coordenadas' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200'"
                             (click)="filtroTipo.set('sin_coordenadas')"
                         >
                             Sin Punto ({{ totalSinCoords() }})
                         </button>
                         <button
                             type="button"
-                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer"
-                            [ngClass]="filtroTipo() === 'alta_ocupacion' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'"
+                            class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                            [ngClass]="filtroTipo() === 'alta_ocupacion' ? 'bg-primary text-white shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200'"
                             (click)="filtroTipo.set('alta_ocupacion')"
                         >
-                            Alta Demanda (≥70%)
+                            Alta Ocupación ≥70%
                         </button>
                     </div>
 
-                    <!-- Lista de Graderías con Scroll Independiente -->
-                    <div class="flex flex-col gap-2 max-h-[600px] overflow-y-auto pr-1">
-                        @if (store.cargando()) {
-                            <div class="py-8 text-center text-surface-400">
-                                <i class="pi pi-spin pi-spinner text-2xl"></i>
-                                <p class="text-xs mt-2">Cargando graderías...</p>
-                            </div>
-                        } @else if (graderiasFiltradas().length === 0) {
-                            <div class="py-8 text-center text-surface-400">
-                                <i class="pi pi-map text-3xl"></i>
-                                <p class="text-xs font-semibold mt-2">No se encontraron graderías</p>
-                                <p class="text-[11px] text-surface-500">Prueba ajustando los filtros de búsqueda</p>
+                    <!-- Lista con scroll de Graderías -->
+                    <div class="flex flex-col gap-2 max-h-[490px] overflow-y-auto pr-1">
+                        @if (graderiasFiltradas().length === 0) {
+                            <div class="p-6 text-center text-surface-400 text-xs flex flex-col items-center gap-2">
+                                <i class="pi pi-filter-slash text-2xl"></i>
+                                <span>No se encontraron graderías con los filtros actuales.</span>
                             </div>
                         } @else {
                             @for (g of graderiasFiltradas(); track g.id) {
                                 <div
-                                    class="p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 hover:border-primary/50"
-                                    [ngClass]="graderiaEnFoco()?.id === g.id ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-xs' : 'bg-surface-50/60 dark:bg-surface-800/40 border-surface-200 dark:border-surface-800'"
+                                    class="p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 relative overflow-hidden"
+                                    [ngClass]="graderiaEnFoco()?.id === g.id
+                                        ? 'bg-primary/5 dark:bg-primary/10 border-primary shadow-sm scale-[1.01]'
+                                        : 'bg-surface-50 dark:bg-surface-800/60 border-surface-200 dark:border-surface-700 hover:border-surface-300 hover:bg-surface-100/70'"
                                     (click)="seleccionarGraderia(g)"
                                 >
                                     <div class="flex items-start justify-between gap-2">
                                         <div class="flex items-center gap-2 min-w-0">
                                             <div
-                                                class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
-                                                [ngClass]="calcularPorcentajeOcupacion(g) >= 70 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'"
+                                                class="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold"
+                                                [ngClass]="g.latitud != null ? 'bg-emerald-500/10 text-emerald-600' : 'bg-surface-200 text-surface-500'"
                                             >
                                                 <i class="pi pi-map-marker"></i>
                                             </div>
@@ -213,9 +255,21 @@
                                         <div class="flex items-center gap-2 text-[11px] shrink-0">
                                             <span><strong>{{ g.capacidad_total || (g.filas * g.columnas) }}</strong> butacas</span>
                                             @if (g.latitud != null && g.longitud != null) {
-                                                <span class="text-emerald-500" pTooltip="Ubicada en mapa">
-                                                    <i class="pi pi-check-circle"></i>
-                                                </span>
+                                                @if (rutaStore.tieneRutaActiva()) {
+                                                    @let val = rutaStore.validarPunto(g.latitud, g.longitud);
+                                                    <span
+                                                        class="font-semibold text-[10px]"
+                                                        [ngClass]="val.valido ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'"
+                                                        [pTooltip]="val.valido ? 'En rango autorizado (a ' + val.distancia + 'm de la ruta oficial)' : 'Fuera de rango (a ' + val.distancia + 'm, límite: ' + val.tolerancia + 'm)'"
+                                                    >
+                                                        <i [class]="val.valido ? 'pi pi-check-circle mr-0.5' : 'pi pi-exclamation-triangle mr-0.5'"></i>
+                                                        {{ val.distancia }}m
+                                                    </span>
+                                                } @else {
+                                                    <span class="text-emerald-500" pTooltip="Ubicada en mapa">
+                                                        <i class="pi pi-check-circle"></i>
+                                                    </span>
+                                                }
                                             } @else {
                                                 <button
                                                     type="button"
@@ -241,18 +295,182 @@
             
             <div class="relative w-full h-[620px] rounded-3xl overflow-hidden border border-surface-200 dark:border-surface-800 shadow-md bg-surface-100 dark:bg-surface-950">
                 
+                <!-- BARRA FLOTANTE DE TRAZADO DE RUTA OFICIAL (SOLO ADMINISTRADOR) -->
+                @if (modoTrazadoRuta()) {
+                    <div class="absolute top-3 left-3 sm:left-4 right-14 sm:right-16 md:right-auto md:max-w-xl lg:max-w-2xl z-20 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border border-surface-200 dark:border-surface-700 rounded-3xl p-3 sm:p-4 shadow-2xl flex flex-col gap-3 animate-fadein">
+                        @if (panelTrazadoMinimizado()) {
+                            <!-- Modo Compacto / Minimizado para máxima visibilidad del mapa -->
+                            <div class="flex items-center justify-between gap-2.5">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shrink-0"></span>
+                                    <span class="text-xs font-bold text-surface-900 dark:text-surface-0 truncate">Trazando Recorrido:</span>
+                                    <p-tag [value]="puntosTrazado().length + ' Pts'" />
+                                    <span class="text-xs text-surface-500 dark:text-surface-400 font-medium shrink-0">±{{ toleranciaMetrosTrazado() }}m</span>
+                                </div>
+
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button
+                                        type="button"
+                                        pButton
+                                        icon="pi pi-undo"
+                                        class="p-button-outlined p-button-secondary p-button-sm text-xs p-1 w-7 h-7"
+                                        [disabled]="puntosTrazado().length === 0"
+                                        (click)="deshacerUltimoPuntoRuta()"
+                                        pTooltip="Deshacer último punto"
+                                    ></button>
+
+                                    <button
+                                        type="button"
+                                        pButton
+                                        icon="pi pi-check"
+                                        class="p-button-primary p-button-sm font-bold text-xs p-1 w-7 h-7"
+                                        [disabled]="puntosTrazado().length < 2 || rutaStore.guardando()"
+                                        [loading]="rutaStore.guardando()"
+                                        (click)="guardarRutaTrazada()"
+                                        pTooltip="Guardar ruta oficial"
+                                    ></button>
+
+                                    <button
+                                        type="button"
+                                        pButton
+                                        icon="pi pi-chevron-down"
+                                        class="p-button-text p-button-secondary p-button-sm text-xs p-0 w-7 h-7 rounded-full"
+                                        (click)="panelTrazadoMinimizado.set(false)"
+                                        pTooltip="Expandir panel de trazado"
+                                    ></button>
+
+                                    <button
+                                        type="button"
+                                        pButton
+                                        icon="pi pi-times"
+                                        class="p-button-text p-button-secondary p-button-sm text-xs p-0 w-7 h-7 rounded-full"
+                                        (click)="cancelarTrazadoRuta()"
+                                        pTooltip="Cancelar trazado"
+                                    ></button>
+                                </div>
+                            </div>
+                        } @else {
+                            <!-- Modo Extendido con detalles y configuración -->
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-9 h-9 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                                        <i class="pi pi-pencil"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <h3 class="text-xs sm:text-sm font-black text-surface-900 dark:text-surface-0">
+                                                Trazado de Recorrido Oficial (Administrador)
+                                            </h3>
+                                            <p-tag [value]="puntosTrazado().length + ' Puntos Marcados'" />
+                                        </div>
+                                        <p class="text-[11px] text-surface-500 dark:text-surface-400 mt-0.5 truncate">
+                                            Haz clic secuencialmente sobre el mapa a lo largo de las calles para trazar la ruta oficial del carnaval.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button
+                                        type="button"
+                                        pButton
+                                        icon="pi pi-chevron-up"
+                                        class="p-button-text p-button-secondary p-button-sm p-0 w-7 h-7 rounded-full"
+                                        (click)="panelTrazadoMinimizado.set(true)"
+                                        pTooltip="Minimizar panel para ver más mapa"
+                                    ></button>
+                                    <button
+                                        type="button"
+                                        pButton
+                                        icon="pi pi-times"
+                                        class="p-button-text p-button-secondary p-button-sm p-0 w-7 h-7 rounded-full"
+                                        (click)="cancelarTrazadoRuta()"
+                                        pTooltip="Cancelar trazado"
+                                    ></button>
+                                </div>
+                            </div>
+
+                            <!-- Configuración rápida de Nombre y Tolerancia en metros -->
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-2 border-t border-surface-200 dark:border-surface-700 items-end">
+                                <div class="sm:col-span-5 flex flex-col gap-1">
+                                    <label class="text-xs text-surface-700 dark:text-surface-300 font-semibold">Nombre de la Ruta:</label>
+                                    <input
+                                        pInputText
+                                        type="text"
+                                        [(ngModel)]="nombreRutaTrazado"
+                                        placeholder="Ej: Ruta Oficial Carnaval 2026"
+                                        class="w-full text-xs py-2 px-3 rounded-xl"
+                                    />
+                                </div>
+
+                                <div class="sm:col-span-3 flex flex-col gap-1">
+                                    <label class="text-xs text-surface-700 dark:text-surface-300 font-semibold">Margen Máximo:</label>
+                                    <p-inputNumber
+                                        [(ngModel)]="toleranciaMetrosTrazado"
+                                        [min]="5"
+                                        [max]="500"
+                                        suffix=" m"
+                                        styleClass="w-full"
+                                        inputStyleClass="w-full text-xs py-2 px-3 rounded-xl text-center font-bold"
+                                    />
+                                </div>
+
+                                <div class="sm:col-span-4 flex items-center gap-1.5 justify-end flex-wrap">
+                                    <button
+                                        type="button"
+                                        pButton
+                                        label="Deshacer"
+                                        icon="pi pi-undo"
+                                        class="p-button-outlined p-button-secondary p-button-sm rounded-xl text-xs py-2 px-2.5 font-medium"
+                                        [disabled]="puntosTrazado().length === 0"
+                                        (click)="deshacerUltimoPuntoRuta()"
+                                        pTooltip="Eliminar el último punto marcado"
+                                    ></button>
+
+                                    <button
+                                        type="button"
+                                        pButton
+                                        label="Limpiar"
+                                        icon="pi pi-trash"
+                                        class="p-button-outlined p-button-danger p-button-sm rounded-xl text-xs py-2 px-2.5 font-medium"
+                                        [disabled]="puntosTrazado().length === 0"
+                                        (click)="limpiarTrazadoRuta()"
+                                        pTooltip="Borrar todos los puntos trazados"
+                                    ></button>
+
+                                    <button
+                                        type="button"
+                                        pButton
+                                        label="Guardar"
+                                        icon="pi pi-check"
+                                        class="p-button-primary p-button-sm rounded-xl font-bold text-xs py-2 px-3 shadow-xs"
+                                        [disabled]="puntosTrazado().length < 2 || rutaStore.guardando()"
+                                        [loading]="rutaStore.guardando()"
+                                        (click)="guardarRutaTrazada()"
+                                        pTooltip="Guardar y activar esta ruta para restringir la creación de graderías"
+                                    ></button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
                 <!-- Notificación Flotante Superior si Modo Creación está activo -->
-                @if (modoCreacion()) {
-                    <div class="absolute top-3 left-4 right-4 z-20 bg-emerald-600 text-white px-4 py-2.5 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-fadein border border-emerald-400/40">
-                        <div class="flex items-center gap-2 text-xs sm:text-sm font-semibold">
-                            <i class="pi pi-map-marker text-base animate-bounce"></i>
-                            <span>Haz clic en cualquier punto del mapa para fijar la ubicación de la nueva gradería.</span>
+                @if (modoCreacion() && !modoTrazadoRuta()) {
+                    <div class="absolute top-3 left-3 sm:left-4 right-14 sm:right-16 md:right-auto md:max-w-xl z-20 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border border-primary/40 text-surface-900 dark:text-surface-0 px-4 py-2.5 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-fadein">
+                        <div class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold truncate">
+                            <i class="pi pi-map-marker text-primary text-base animate-bounce shrink-0"></i>
+                            <span class="truncate">
+                                Haz clic en el mapa para ubicar la nueva gradería.
+                                @if (rutaStore.tieneRutaActiva()) {
+                                    <span class="text-primary font-bold ml-1">Máx {{ rutaStore.toleranciaMetros() }}m de ruta.</span>
+                                }
+                            </span>
                         </div>
                         <button
                             type="button"
                             pButton
                             icon="pi pi-times"
-                            class="p-button-text p-button-sm text-white p-0 w-6 h-6 rounded-full hover:bg-emerald-700"
+                            class="p-button-text p-button-secondary p-button-sm p-0 w-6 h-6 rounded-full shrink-0"
                             (click)="alternarModoCreacion()"
                             pTooltip="Cancelar modo creación"
                         ></button>
@@ -260,19 +478,34 @@
                 }
 
                 <!-- Contenedor del Mapa MapLibre -->
-                <div #mapContainer class="w-full h-full" [class.cursor-crosshair]="modoCreacion()" [ngClass]="{ 'map-dark-raster': layoutService.isDarkTheme() && tipoCapa() === 'raster' }"></div>
+                <div
+                    #mapContainer
+                    class="w-full h-full"
+                    [class.cursor-crosshair]="modoCreacion() || modoTrazadoRuta()"
+                    [ngClass]="{ 'map-dark-raster': layoutService.isDarkTheme() && tipoCapa() === 'raster' }"
+                ></div>
 
                 <!-- Tarjeta Flotante al seleccionar un punto nuevo para crear gradería -->
                 @if (puntoCreacion(); as punto) {
-                    <div class="absolute top-4 left-4 right-4 sm:right-auto sm:w-[350px] z-30 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border-2 border-emerald-500 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-fadein">
+                    @let validacion = validacionPuntoCreacion();
+                    @let tieneRuta = rutaStore.tieneRutaActiva();
+                    @let esValido = !tieneRuta || (validacion?.valido ?? true);
+
+                    <div
+                        class="absolute top-3 left-3 sm:left-4 right-14 sm:right-auto sm:w-[360px] z-20 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-fadein border-2"
+                        [ngClass]="esValido ? 'border-emerald-500' : 'border-red-500'"
+                    >
                         <div class="flex items-start justify-between gap-2">
                             <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-sm">
-                                    <i class="pi pi-plus"></i>
+                                <div
+                                    class="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm"
+                                    [ngClass]="esValido ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'"
+                                >
+                                    <i [class]="esValido ? 'pi pi-plus' : 'pi pi-exclamation-triangle'"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-sm font-black text-surface-900 dark:text-surface-0">
-                                        Crear Gradería Aquí
+                                        {{ esValido ? 'Crear Gradería Aquí' : 'Ubicación Fuera de Ruta' }}
                                     </h3>
                                     <p class="text-[11px] text-surface-500 font-mono">
                                         Lat: {{ punto.latitud | number:'1.5-5' }}, Lng: {{ punto.longitud | number:'1.5-5' }}
@@ -289,35 +522,68 @@
                             ></button>
                         </div>
 
-                        <p class="text-xs text-surface-600 dark:text-surface-300">
-                            Punto fijado en el mapa. Selecciona cómo deseas crear la gradería con estas coordenadas:
-                        </p>
+                        <!-- Estado de Validación de Ruta -->
+                        @if (tieneRuta && validacion) {
+                            <div class="p-2.5 rounded-2xl border text-xs" [ngClass]="esValido ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-300'">
+                                <div class="flex items-center gap-1.5 font-bold mb-0.5">
+                                    <i [class]="esValido ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+                                    <span>{{ esValido ? 'Ubicación en Rango Autorizado' : 'Posición No Autorizada' }}</span>
+                                </div>
+                                <p class="text-[11px] leading-tight opacity-90">
+                                    @if (esValido) {
+                                        Punto a <strong>{{ validacion.distancia }}m</strong> del recorrido oficial (Límite: {{ validacion.tolerancia }}m).
+                                    } @else {
+                                        Punto a <strong>{{ validacion.distancia }}m</strong> de la ruta oficial, excediendo el límite de <strong>{{ validacion.tolerancia }}m</strong> establecido por el administrador.
+                                    }
+                                </p>
+                            </div>
+                        }
 
-                        <div class="flex flex-col gap-2 pt-1 border-t border-surface-200 dark:border-surface-700">
-                            <button
-                                type="button"
-                                pButton
-                                label="Crear Gradería (Rápido)"
-                                icon="pi pi-check"
-                                class="p-button-primary w-full rounded-xl font-bold text-xs py-2 shadow-xs"
-                                (click)="abrirModalCrearEnPunto()"
-                            ></button>
+                        @if (esValido) {
+                            <p class="text-xs text-surface-600 dark:text-surface-300">
+                                Ubicación válida. Selecciona cómo deseas crear la gradería con estas coordenadas:
+                            </p>
 
-                            <button
-                                type="button"
-                                pButton
-                                label="Diseñar en Página Completa"
-                                icon="pi pi-external-link"
-                                class="p-button-outlined p-button-secondary w-full rounded-xl font-semibold text-xs py-1.5"
-                                (click)="disenarEnPaginaNueva()"
-                            ></button>
-                        </div>
+                            <div class="flex flex-col gap-2 pt-1 border-t border-surface-200 dark:border-surface-700">
+                                <button
+                                    type="button"
+                                    pButton
+                                    label="Crear Gradería (Rápido)"
+                                    icon="pi pi-check"
+                                    class="p-button-primary w-full rounded-xl font-bold text-xs py-2 shadow-xs"
+                                    (click)="abrirModalCrearEnPunto()"
+                                ></button>
+
+                                <button
+                                    type="button"
+                                    pButton
+                                    label="Diseñar en Página Completa"
+                                    icon="pi pi-external-link"
+                                    class="p-button-outlined p-button-secondary w-full rounded-xl font-semibold text-xs py-1.5"
+                                    (click)="disenarEnPaginaNueva()"
+                                ></button>
+                            </div>
+                        } @else {
+                            <div class="flex flex-col gap-2 pt-1 border-t border-surface-200 dark:border-surface-700">
+                                <p class="text-xs text-red-600 dark:text-red-400 font-medium">
+                                    Para mantener el control y orden en la venta de butacas, solo se permite colocar graderías dentro del área autorizada de la ruta oficial.
+                                </p>
+                                <button
+                                    type="button"
+                                    pButton
+                                    label="Seleccionar otro punto en el mapa"
+                                    icon="pi pi-compass"
+                                    class="p-button-outlined p-button-danger w-full rounded-xl font-semibold text-xs py-1.5"
+                                    (click)="limpiarPuntoCreacion()"
+                                ></button>
+                            </div>
+                        }
                     </div>
                 }
 
                 <!-- Tarjeta Flotante con el Detalle Completo de la Gradería Seleccionada -->
                 @if (graderiaSeleccionada(); as sel) {
-                    <div class="absolute top-4 left-4 right-4 sm:right-auto sm:w-[370px] z-20 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border border-surface-200 dark:border-surface-700 rounded-3xl p-4 shadow-2xl flex flex-col gap-3.5 animate-fadein">
+                    <div class="absolute top-3 left-3 sm:left-4 right-14 sm:right-auto sm:w-[370px] z-20 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border border-surface-200 dark:border-surface-700 rounded-3xl p-4 shadow-2xl flex flex-col gap-3.5 animate-fadein">
                         
                         <!-- Encabezado de la Tarjeta -->
                         <div class="flex items-start justify-between gap-2">
@@ -455,53 +721,58 @@
                     </div>
                 }
 
-                <!-- Barra Flotante de Persistencia del Pin Enfocado (visible cuando la tarjeta grande se cierra) -->
+                <!-- Barra Flotante de Persistencia del Pin Enfocado -->
                 @if (graderiaEnFoco(); as foco) {
                     @if (!graderiaSeleccionada()) {
-                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-surface-900/90 text-white px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md border border-white/20 animate-fadein">
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-surface-0/95 dark:bg-surface-900/95 text-surface-900 dark:text-surface-0 px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md border border-surface-200 dark:border-surface-700 animate-fadein">
                             <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
                                 <span class="text-xs font-bold">{{ foco.nombre }}</span>
-                                <span class="text-[11px] text-white/60 font-mono">
+                                <span class="text-[11px] text-surface-500 dark:text-surface-400 font-mono">
                                     {{ foco.latitud | number:'1.4-4' }}, {{ foco.longitud | number:'1.4-4' }}
                                 </span>
                             </div>
                             <button
                                 type="button"
-                                class="px-2.5 py-1 text-xs font-bold rounded-lg bg-primary hover:bg-primary-emphasis text-white transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                                pButton
+                                label="Ver Ficha"
+                                icon="pi pi-eye"
+                                class="p-button-primary p-button-sm text-xs py-1 px-2.5 rounded-xl font-bold shadow-xs"
                                 (click)="reabrirDetalle(foco)"
-                            >
-                                <i class="pi pi-eye text-[10px]"></i>
-                                <span>Ver Ficha</span>
-                            </button>
+                            ></button>
                             <button
                                 type="button"
-                                class="text-white/60 hover:text-white text-xs p-1 cursor-pointer"
+                                pButton
+                                icon="pi pi-times"
+                                class="p-button-text p-button-secondary p-button-sm p-0 w-6 h-6 rounded-full"
                                 (click)="quitarFoco()"
                                 pTooltip="Quitar foco"
-                            >
-                                <i class="pi pi-times"></i>
-                            </button>
+                            ></button>
                         </div>
                     }
                 }
 
                 <!-- Barra Flotante de Leyenda y Estado en la esquina inferior izquierda -->
-                <div class="absolute bottom-4 left-4 z-10 bg-surface-900/85 backdrop-blur-md text-white px-3.5 py-2 rounded-2xl shadow-lg border border-white/10 flex items-center gap-3 text-xs">
-                    <div class="flex items-center gap-1.5">
+                <div class="absolute bottom-4 left-4 z-10 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md text-surface-700 dark:text-surface-200 px-3.5 py-2 rounded-2xl shadow-lg border border-surface-200 dark:border-surface-700 flex items-center gap-3 text-xs">
+                    <div class="flex items-center gap-1.5 font-medium">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                         <span>≥70% Alta</span>
                     </div>
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 font-medium">
                         <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                         <span>30-69% Media</span>
                     </div>
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 font-medium">
                         <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
                         <span>&lt;30% Libre</span>
                     </div>
-                    <span class="text-white/40">|</span>
-                    <span class="text-white/70 text-[11px]">MapLibre + OpenFreeMap</span>
+                    @if (rutaStore.tieneRutaActiva()) {
+                        <span class="text-surface-300 dark:text-surface-600">|</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3.5 h-1.5 rounded-full bg-primary"></span>
+                            <span class="text-primary font-bold">Ruta Oficial (±{{ rutaStore.toleranciaMetros() }}m)</span>
+                        </div>
+                    }
                 </div>
 
             </div>

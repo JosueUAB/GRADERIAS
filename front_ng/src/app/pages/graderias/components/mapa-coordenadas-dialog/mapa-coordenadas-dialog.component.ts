@@ -1,5 +1,6 @@
 import {
     Component,
+    computed,
     ElementRef,
     EventEmitter,
     inject,
@@ -17,9 +18,12 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import * as maplibregl from 'maplibre-gl';
 import { LayoutService } from '@/app/layout/service/layout.service';
+import { NotificacionService } from '@/app/core/services/notificacion.service';
+import { RutaStore } from '@/app/core/store/ruta.store';
 import {
     configurarMapLibreWorker,
-    resolverEstiloMapa
+    resolverEstiloMapa,
+    dibujarRutaEnMapa
 } from '@/app/core/helpers/maplibre.helper';
 
 @Component({
@@ -37,6 +41,8 @@ import {
 })
 export class MapaCoordenadasDialogComponent implements OnDestroy {
     readonly layoutService = inject(LayoutService);
+    readonly rutaStore = inject(RutaStore);
+    private readonly notificacion = inject(NotificacionService);
 
     @ViewChild('mapPickerContainer') mapPickerContainer!: ElementRef<HTMLDivElement>;
 
@@ -52,6 +58,10 @@ export class MapaCoordenadasDialogComponent implements OnDestroy {
     lngTemporal = signal<number>(-67.1105);
     fallbackRasterActivo = signal<boolean>(false);
 
+    readonly validacionRuta = computed(() => {
+        return this.rutaStore.validarPunto(this.latTemporal(), this.lngTemporal());
+    });
+
     private map: maplibregl.Map | null = null;
     private marker: maplibregl.Marker | null = null;
 
@@ -63,6 +73,10 @@ export class MapaCoordenadasDialogComponent implements OnDestroy {
     }
 
     onDialogShow() {
+        this.rutaStore.cargarRutaActiva(() => {
+            this.dibujarRutaSiExiste();
+        });
+
         const tieneCoords = this.latitud() != null && this.longitud() != null;
         const latInicial = tieneCoords ? Number(this.latitud()) : -17.9657;
         const lngInicial = tieneCoords ? Number(this.longitud()) : -67.1105;
@@ -110,6 +124,15 @@ export class MapaCoordenadasDialogComponent implements OnDestroy {
             }
         });
 
+        this.map.on('style.load', () => {
+            this.dibujarRutaSiExiste();
+        });
+
+        this.map.on('load', () => {
+            this.dibujarRutaSiExiste();
+            this.map?.resize();
+        });
+
         this.crearMarcador(lat, lng);
 
         // Clic en cualquier punto del mapa reposiciona el pin
@@ -120,23 +143,29 @@ export class MapaCoordenadasDialogComponent implements OnDestroy {
             this.lngTemporal.set(nuevoLng);
             this.marker?.setLngLat([nuevoLng, nuevoLat]);
         });
+    }
 
-        this.map.on('load', () => {
-            this.map?.resize();
-        });
+    private dibujarRutaSiExiste(): void {
+        if (!this.map) return;
+        const ruta = this.rutaStore.rutaActiva();
+        if (ruta && ruta.coordenadas && ruta.coordenadas.length >= 2) {
+            const primaryColor = this.layoutService.getPrimary() || '#960023';
+            dibujarRutaEnMapa(this.map, ruta.coordenadas, ruta.color || primaryColor, 'picker-ruta-source');
+        }
     }
 
     private crearMarcador(lat: number, lng: number): void {
+        const primaryColor = this.layoutService.getPrimary() || '#960023';
         const el = document.createElement('div');
         el.className = 'carnaval-picker-marker';
         el.innerHTML = `
             <div style="cursor: grab; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));">
-                <div style="background: #960023; color: #ffffff; padding: 5px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px; display: flex; align-items: center; gap: 4px; border: 2px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">
+                <div style="background: ${primaryColor}; color: #ffffff; padding: 5px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px; display: flex; align-items: center; gap: 4px; border: 2px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">
                     <i class="pi pi-map-marker" style="font-size: 12px;"></i>
                     <span>${this.nombreGraderia() || 'Gradería'}</span>
                 </div>
-                <div style="width: 3px; height: 12px; background: #960023;"></div>
-                <div style="width: 8px; height: 8px; background: #960023; border-radius: 50%; border: 2px solid #fff;"></div>
+                <div style="width: 3px; height: 12px; background: ${primaryColor};"></div>
+                <div style="width: 8px; height: 8px; background: ${primaryColor}; border-radius: 50%; border: 2px solid #fff;"></div>
             </div>
         `;
 
@@ -164,6 +193,14 @@ export class MapaCoordenadasDialogComponent implements OnDestroy {
     }
 
     confirmar(): void {
+        const validacion = this.validacionRuta();
+        if (this.rutaStore.tieneRutaActiva() && !validacion.valido) {
+            this.notificacion.advertencia(
+                `Ubicación fuera de rango: está a ${validacion.distancia}m de la ruta oficial. El límite máximo autorizado es de ${validacion.tolerancia}m.`
+            );
+            return;
+        }
+
         this.coordenadasConfirmadas.emit({
             latitud: this.latTemporal(),
             longitud: this.lngTemporal()

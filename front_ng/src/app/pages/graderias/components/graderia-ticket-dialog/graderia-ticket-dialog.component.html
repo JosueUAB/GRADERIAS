@@ -5,97 +5,151 @@
     [closable]="true"
     [draggable]="false"
     [resizable]="false"
-    styleClass="w-11/12 max-w-lg rounded-3xl"
+    styleClass="w-11/12 max-w-xl rounded-3xl"
 >
-    <div class="flex flex-col gap-5 py-2">
+    <div class="flex flex-col gap-4 py-1">
         <!-- Ícono de Éxito y Resumen -->
-        <div class="flex flex-col items-center text-center gap-2">
-            <div class="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl shadow-sm">
+        <div class="flex flex-col items-center text-center gap-1.5">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl shadow-xs">
                 <i class="pi pi-check-circle"></i>
             </div>
-            <h3 class="text-xl font-extrabold text-surface-900 dark:text-surface-0 mt-1">
-                Boletos Generados Correctamente
+            <h3 class="text-lg font-black text-surface-900 dark:text-surface-0 mt-0.5">
+                Boletos Generados Exitosamente
             </h3>
-            <p class="text-xs text-muted-color max-w-xs">
-                Se han registrado <strong>{{ asientos().length }} butacas</strong> para <strong>{{ cliente()?.nombre }}</strong>.
+            <p class="text-xs text-surface-500 dark:text-surface-400 max-w-sm">
+                Se han emitido <strong>{{ asientos().length }} butacas</strong> oficiales a nombre de <strong>{{ cliente()?.nombre }}</strong>.
             </p>
         </div>
 
         <!-- Tarjeta Resumen del Boleto -->
-        <div class="bg-surface-50 dark:bg-surface-950 border border-surface-200 dark:border-surface-800 rounded-2xl p-4 flex flex-col gap-3">
-            <div class="flex items-center justify-between text-xs pb-2 border-b border-surface-200 dark:border-surface-800">
-                <span class="text-muted-color">Gradería:</span>
+        <div class="bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-4 flex flex-col gap-2.5 text-xs">
+            <!-- Gradería & Sector -->
+            <div class="flex items-center justify-between pb-2 border-b border-surface-200 dark:border-surface-800">
+                <span class="text-surface-500">Gradería / Sector:</span>
                 <span class="font-bold text-surface-900 dark:text-surface-0">{{ graderia()?.nombre }}</span>
             </div>
 
-            <div class="flex items-center justify-between text-xs pb-2 border-b border-surface-200 dark:border-surface-800">
-                <span class="text-muted-color">Cliente:</span>
-                <span class="font-bold text-surface-900 dark:text-surface-0">{{ cliente()?.nombre }}</span>
-            </div>
-
-            @if (cliente()?.celular) {
-                <div class="flex items-center justify-between text-xs pb-2 border-b border-surface-200 dark:border-surface-800">
-                    <span class="text-muted-color">Teléfono / WhatsApp:</span>
-                    <span class="font-mono text-surface-900 dark:text-surface-0">{{ cliente()?.celular }}</span>
+            <!-- Ubicación y GPS -->
+            @if (graderia()?.direccion || tieneCoordenadas()) {
+                <div class="flex items-start justify-between pb-2 border-b border-surface-200 dark:border-surface-800 gap-2">
+                    <span class="text-surface-500 shrink-0">Ubicación / GPS:</span>
+                    <div class="flex flex-col items-end gap-1 text-right">
+                        @if (graderia()?.direccion) {
+                            <span class="text-surface-700 dark:text-surface-300 font-medium truncate max-w-xs">
+                                {{ graderia()?.direccion }}
+                            </span>
+                        }
+                        @if (tieneCoordenadas()) {
+                            <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                                <span class="font-mono text-[10px] text-surface-400">
+                                    {{ graderia()?.latitud?.toFixed(5) }}, {{ graderia()?.longitud?.toFixed(5) }}
+                                </span>
+                                <button
+                                    type="button"
+                                    class="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
+                                    (click)="abrirGoogleMaps()"
+                                    pTooltip="Ver ubicación en Google Maps"
+                                >
+                                    <i class="pi pi-external-link text-[10px]"></i>
+                                    <span>Google Maps</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 text-xs p-0.5 cursor-pointer bg-transparent border-0"
+                                    (click)="copiarUbicacion()"
+                                    pTooltip="Copiar enlace de Google Maps"
+                                >
+                                    <i class="pi pi-copy text-[11px]"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
                 </div>
             }
 
+            <!-- Cliente -->
+            <div class="flex items-center justify-between pb-2 border-b border-surface-200 dark:border-surface-800">
+                <span class="text-surface-500">Titular / Cliente:</span>
+                <span class="font-bold text-surface-900 dark:text-surface-0">{{ cliente()?.nombre }}</span>
+            </div>
+
+            <!-- Teléfono / WhatsApp -->
+            @if (cliente()?.celular) {
+                <div class="flex items-center justify-between pb-2 border-b border-surface-200 dark:border-surface-800">
+                    <span class="text-surface-500">Teléfono / WhatsApp:</span>
+                    <span class="font-mono font-medium text-surface-900 dark:text-surface-0">{{ cliente()?.celular }}</span>
+                </div>
+            }
+
+            <!-- Butacas Asignadas -->
             <div class="flex flex-col gap-1.5 pb-2 border-b border-surface-200 dark:border-surface-800">
-                <span class="text-xs text-muted-color">Butacas Asignadas ({{ asientos().length }}):</span>
+                <span class="text-surface-500 font-semibold">Butacas Asignadas ({{ asientos().length }}):</span>
                 <div class="flex items-center gap-1.5 flex-wrap">
                     @for (asiento of asientos(); track asiento.id) {
-                        <span class="px-2.5 py-1 rounded-xl bg-primary/10 text-primary font-mono font-bold text-xs">
+                        <span class="px-2.5 py-1 rounded-xl bg-primary/10 text-primary font-mono font-bold text-xs border border-primary/20">
                             {{ asiento.codigo }}
                         </span>
                     }
                 </div>
             </div>
 
+            <!-- Total Cobrado -->
             <div class="flex items-center justify-between text-sm pt-1">
                 <span class="font-bold text-surface-900 dark:text-surface-0">Total Cobrado:</span>
-                <span class="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                <span class="text-base font-black text-emerald-600 dark:text-emerald-400">
                     Bs. {{ (cliente()?.montoTotal || 0) | number:'1.2-2' }}
                 </span>
             </div>
         </div>
 
-        <!-- Botones de Acción Inmediata: Imprimir, PDF y WhatsApp -->
-        <div class="flex flex-col gap-2.5">
-            <!-- Botón 1: Descargar PDF con 1 hoja por butaca -->
+        <!-- Botones de Acción Inmediata: WhatsApp Directo, PDF e Imprimir -->
+        <div class="flex flex-col gap-2">
+            <!-- Botón Destacado: Enviar por WhatsApp Directo (Abre chat inmediato sin agendar) -->
             <p-button
-                [label]="'Descargar Boletos PDF (' + asientos().length + ' hojas)'"
-                icon="pi pi-file-pdf"
+                label="Enviar por WhatsApp"
+                icon="pi pi-whatsapp"
                 [rounded]="true"
-                severity="danger"
+                severity="success"
                 [fluid]="true"
-                [loading]="generandoPdf()"
-                (click)="descargarBoletosPdf()"
-                styleClass="shadow-sm py-2.5 font-bold"
+                (click)="enviarPorWhatsApp()"
+                styleClass="py-2.5 font-bold shadow-xs text-xs sm:text-sm"
             />
 
             <div class="grid grid-cols-2 gap-2">
-                <!-- Botón 2: Imprimir Directo -->
+                <!-- Botón 2: Descargar PDF -->
+                <p-button
+                    [label]="'Descargar PDF (' + asientos().length + ' ' + (asientos().length === 1 ? 'boleto' : 'boletos') + ')'"
+                    icon="pi pi-file-pdf"
+                    [rounded]="true"
+                    severity="danger"
+                    [outlined]="true"
+                    [fluid]="true"
+                    [loading]="generandoPdf()"
+                    (click)="descargarBoletosPdf()"
+                    styleClass="py-2 text-xs font-semibold"
+                />
+
+                <!-- Botón 3: Imprimir Directo -->
                 <p-button
                     label="Imprimir Boletos"
                     icon="pi pi-print"
                     [rounded]="true"
-                    severity="info"
+                    severity="secondary"
                     [outlined]="true"
                     [fluid]="true"
                     [loading]="generandoPdf()"
                     (click)="imprimirBoletosPdf()"
-                />
-
-                <!-- Botón 3: Enviar por WhatsApp -->
-                <p-button
-                    label="Enviar por WhatsApp"
-                    icon="pi pi-whatsapp"
-                    [rounded]="true"
-                    severity="success"
-                    [fluid]="true"
-                    (click)="enviarPorWhatsApp()"
+                    styleClass="py-2 text-xs font-semibold"
                 />
             </div>
+        </div>
+
+        <!-- Nota informativa -->
+        <div class="bg-surface-100 dark:bg-surface-800/60 p-2.5 rounded-xl border border-surface-200 dark:border-surface-700/60 flex items-start gap-2 text-[11px] text-surface-600 dark:text-surface-400">
+            <i class="pi pi-info-circle text-primary text-xs mt-0.5 shrink-0"></i>
+            <span>
+                Los boletos en PDF incluyen el código QR de validación, código de butaca en alta visibilidad, dirección, enlace de navegación en Google Maps y recomendaciones oficiales de acceso.
+            </span>
         </div>
     </div>
 
@@ -105,7 +159,7 @@
                 label="Continuar Vendiendo"
                 icon="pi pi-check"
                 [rounded]="true"
-                severity="secondary"
+                severity="primary"
                 (click)="cerrar()"
             />
         </div>

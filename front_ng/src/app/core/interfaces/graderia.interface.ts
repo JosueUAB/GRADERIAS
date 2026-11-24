@@ -30,6 +30,8 @@ export interface Graderia {
         username: string;
         role: string;
         avatar?: string;
+        telefono_contacto_1?: string;
+        telefono_contacto_2?: string;
     };
 }
 

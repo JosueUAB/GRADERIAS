@@ -167,25 +167,37 @@ export class GraderiaClientesDialogComponent {
         const urlPublica = `${window.location.origin}/g/${g.code}`;
 
         const mensaje =
-            `🎟️ *¡Tus Boletos están Confirmados!* 🎟️\n\n` +
-            `Hola *${c.nombre}*, te compartimos el detalle de tus entradas:\n` +
-            `🏟️ *Gradería / Sector:* ${g.nombre || 'Gradería'}\n` +
-            `🪑 *Butacas:* ${codigos} (${c.asientos.length} entradas)\n` +
-            `💰 *Monto Total:* Bs. ${total}\n` +
+            `🎫 *¡TUS BOLETOS ESTAN CONFIRMADOS!* 🎫\n\n` +
+            `Hola *${c.nombre}*, te compartimos el detalle de tus entradas:\n\n` +
+            `🎪 *Graderia / Sector:* ${g.nombre || 'Graderia'}\n` +
+            `🎟️ *Butacas:* ${codigos} (${c.asientos.length} ${c.asientos.length === 1 ? 'entrada' : 'entradas'})\n` +
+            `💵 *Monto Total:* Bs. ${total}\n` +
             `📅 *Fecha:* ${new Date().toLocaleDateString()}\n\n` +
-            `🌐 *Puedes consultar el mapa en vivo aquí:*\n${urlPublica}\n\n` +
-            `¡Gracias por tu compra!`;
+            `🔗 *Puedes consultar el mapa en vivo de la graderia aqui:*\n${urlPublica}\n\n` +
+            `✅ *¡Gracias por tu compra!*`;
 
         const encodedMensaje = encodeURIComponent(mensaje);
-        const telSanitizado = (c.celular || '').replace(/\D/g, '');
+        const telCompleto = this.formatearNumeroWhatsApp(c.celular);
 
         let waUrl = `https://api.whatsapp.com/send?text=${encodedMensaje}`;
-        if (telSanitizado) {
-            waUrl = `https://api.whatsapp.com/send?phone=${telSanitizado}&text=${encodedMensaje}`;
+        if (telCompleto) {
+            waUrl = `https://wa.me/${telCompleto}?text=${encodedMensaje}`;
         }
 
         window.open(waUrl, '_blank');
-        this.notificacion.info('Abriendo WhatsApp...');
+        this.notificacion.info('Abriendo chat directo de WhatsApp...');
+    }
+
+    formatearNumeroWhatsApp(celular?: string | null): string {
+        if (!celular) return '';
+        let clean = celular.replace(/\D/g, '');
+        if (clean.startsWith('0')) {
+            clean = clean.substring(1);
+        }
+        if (clean.length === 8) {
+            clean = `591${clean}`;
+        }
+        return clean;
     }
 
     seleccionarYEnviar(c: ClienteGrupoResumen) {

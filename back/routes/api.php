@@ -4,9 +4,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GraderiaController;
 use App\Http\Controllers\AsientoController;
+use App\Http\Controllers\RutaController;
 
 Route::post('/login', [App\Http\Controllers\UserController::class, 'login']);
 Route::get('/public/graderias/{code}', [GraderiaController::class, 'publicShowByCode']);
+Route::get('/public/graderias-mapa', [GraderiaController::class, 'publicMapa']);
+Route::get('/public/rutas/activa', [RutaController::class, 'activa']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/password', [App\Http\Controllers\UserController::class, 'changeMyPassword']);
@@ -57,5 +60,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/ventas/reporte-diario', [\App\Http\Controllers\ReporteVentasController::class, 'reporteDiario']);
     Route::get('/ventas/usuario/{user}', [\App\Http\Controllers\ReporteVentasController::class, 'detalleUsuario']);
 
+    // Rutas Oficiales del Evento / Carnaval (Solo Admin para crear/modificar)
+    Route::get('/rutas/activa', [RutaController::class, 'activa']);
+    Route::post('/rutas/validar-punto', [RutaController::class, 'validarPunto']);
+    Route::get('/rutas', [RutaController::class, 'index']);
+    Route::post('/rutas', [RutaController::class, 'store']);
+    Route::put('/rutas/{ruta}', [RutaController::class, 'update']);
+    Route::delete('/rutas/{ruta}', [RutaController::class, 'destroy']);
+    Route::post('/rutas/{ruta}/activar', [RutaController::class, 'activar']);
 
 });

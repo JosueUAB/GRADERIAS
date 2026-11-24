@@ -283,11 +283,13 @@ export class AsientoEdicionDialogComponent implements OnChanges {
             `¡Gracias por tu compra!`;
 
         const encodedMensaje = encodeURIComponent(mensaje);
-        const telSanitizado = (cel || '').replace(/\D/g, '');
+        let clean = (cel || '').replace(/\D/g, '');
+        if (clean.startsWith('0')) clean = clean.substring(1);
+        if (clean.length === 8) clean = `591${clean}`;
 
         let waUrl = `https://api.whatsapp.com/send?text=${encodedMensaje}`;
-        if (telSanitizado) {
-            waUrl = `https://api.whatsapp.com/send?phone=${telSanitizado}&text=${encodedMensaje}`;
+        if (clean) {
+            waUrl = `https://wa.me/${clean}?text=${encodedMensaje}`;
         }
         window.open(waUrl, '_blank');
     }

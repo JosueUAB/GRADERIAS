@@ -154,3 +154,24 @@ body.blocked-scroll:not(:has(.layout-mobile-active)) {
         filter: invert(100%) hue-rotate(180deg) brightness(82%) contrast(92%);
     }
 }
+
+/* ==========================================================================
+   MapLibre GL: Controles y Contenedores en Modo Claro y Oscuro
+   ========================================================================== */
+.maplibregl-map {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.maplibregl-ctrl-top-right,
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left {
+    z-index: 35 !important;
+}
+
+.maplibregl-ctrl-top-right {
+    top: 12px !important;
+    right: 12px !important;
+}
+

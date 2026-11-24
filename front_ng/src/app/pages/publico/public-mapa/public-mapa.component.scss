@@ -1,0 +1,116 @@
+:host { display: block; width: 100%; height: 100vh; overflow: hidden; }
+.public-map-layout { height: 100vh; width: 100%; }
+.public-map-container { width: 100% !important; height: 100% !important; }
+
+:host ::ng-deep {
+    .maplibregl-map, .maplibregl-canvas { width: 100% !important; height: 100% !important; }
+    .public-graderia-marker { cursor: pointer; user-select: none; }
+
+    .graderia-pin-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+        will-change: transform;
+        --pin-bg: #059669;
+
+        &.pin-status-disponible { --pin-bg: #059669; }
+        &.pin-status-pocas { --pin-bg: #d97706; }
+        &.pin-status-agotado { --pin-bg: #dc2626; }
+
+        &:hover {
+            transform: translateY(-2.5px) scale(1.08);
+            z-index: 50 !important;
+        }
+
+        &.is-dimmed {
+            opacity: 0.55;
+            &:hover { opacity: 0.95; }
+        }
+
+        .graderia-pin-pill {
+            background: var(--pin-bg);
+            color: #fff;
+            border: 2px solid #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .pin-badge {
+            background: rgba(255, 255, 255, 0.25);
+            color: #fff;
+        }
+
+        .graderia-pin-pointer { border-top-color: var(--pin-bg); }
+        .graderia-pin-dot { background: var(--pin-bg); border-color: #fff; }
+
+        &.is-selected {
+            z-index: 1000 !important;
+            transform: translateY(-4px) scale(1.15);
+
+            .graderia-pin-pill {
+                background: var(--p-primary-color, #960023);
+                border: 2.5px solid #fff;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 3px var(--p-primary-color, #960023);
+            }
+
+            .pin-badge {
+                background: rgba(255, 255, 255, 0.3);
+                font-weight: 800;
+            }
+
+            .pin-title { font-weight: 800; }
+            .graderia-pin-pointer { border-top-color: var(--p-primary-color, #960023); }
+            .graderia-pin-dot {
+                background: var(--p-primary-color, #960023);
+                box-shadow: 0 0 0 2px var(--p-primary-color, #960023);
+            }
+        }
+    }
+
+    .graderia-pin-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3.5px 9px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+
+        .pin-title {
+            max-width: 125px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pin-badge {
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 9999px;
+        }
+    }
+
+    .graderia-pin-pointer {
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid var(--pin-bg, #059669);
+        margin-top: -1px;
+    }
+
+    .graderia-pin-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        margin-top: 1px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+}
+
+.sector-card-active {
+    border-color: var(--p-primary-color, #960023) !important;
+    background-color: rgba(150, 0, 35, 0.08) !important;
+    box-shadow: 0 0 0 1.5px var(--p-primary-color, #960023) !important;
+}

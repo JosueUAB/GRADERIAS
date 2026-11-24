@@ -80,4 +80,11 @@ export class GraderiaService {
     obtenerPublica(code: string): Observable<GraderiaVentaRespuesta> {
         return this.http.get<GraderiaVentaRespuesta>(`${this.apiUrl}/public/graderias/${code}`);
     }
+
+    /**
+     * Consulta pública de todas las graderías activas con coordenadas para el mapa de espectadores.
+     */
+    obtenerMapaPublico(): Observable<{ graderias: Graderia[] }> {
+        return this.http.get<{ graderias: Graderia[] }>(`${this.apiUrl}/public/graderias-mapa`);
+    }
 }

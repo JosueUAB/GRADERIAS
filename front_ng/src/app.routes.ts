@@ -14,6 +14,10 @@ export const appRoutes: Routes = [
         loadChildren: () => import('./app/pages/publico/publico.routes')
     },
     {
+        path: 'mapa',
+        loadComponent: () => import('./app/pages/publico/public-mapa/public-mapa.component').then((m) => m.PublicMapaComponent)
+    },
+    {
         path: 'landing',
         component: Landing
     },

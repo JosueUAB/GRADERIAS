@@ -1,0 +1,395 @@
+<div class="public-map-layout flex flex-col w-full h-screen overflow-hidden bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
+    
+    <!-- 1. BARRA SUPERIOR PÚBLICA -->
+    <header class="shrink-0 bg-surface-0 dark:bg-surface-900 border-b border-surface-200 dark:border-surface-800 px-4 py-3 sm:px-6 shadow-xs flex items-center justify-between gap-4 flex-wrap z-30">
+        <div class="flex items-center gap-3">
+            <a
+                routerLink="/landing"
+                class="w-9 h-9 rounded-xl bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 flex items-center justify-center text-surface-700 dark:text-surface-200 transition-colors no-underline"
+                pTooltip="Volver a la página principal"
+            >
+                <i class="pi pi-arrow-left text-sm"></i>
+            </a>
+
+            <div class="flex flex-col">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="text-base sm:text-lg font-black text-surface-900 dark:text-surface-0 leading-tight">
+                        Mapa de Graderías · Carnaval de Oruro
+                    </h1>
+                    @if (rutaActiva()) {
+                        <p-tag [value]="'Ruta Oficial Activa'" severity="info" icon="pi pi-compass" />
+                    }
+                </div>
+                <p class="text-xs text-surface-500 dark:text-surface-400">
+                    Encuentra tu gradería a lo largo de la entrada folklórica, revisa butacas disponibles y contacta vendedores autorizados.
+                </p>
+            </div>
+        </div>
+
+        <!-- Métricas Rápidas y Modo Oscuro -->
+        <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div class="hidden md:flex items-center gap-2 text-xs">
+                <div class="px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                    <i class="pi pi-check-circle mr-1"></i>
+                    <span>{{ estadisticas().totalLibres }} Butacas Libres</span>
+                </div>
+                <div class="px-2.5 py-1 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 font-medium border border-surface-200 dark:border-surface-700">
+                    <span>{{ estadisticas().totalGraderias }} Sectores Marcados</span>
+                </div>
+            </div>
+
+            <p-button
+                [icon]="layoutService.isDarkTheme() ? 'pi pi-sun' : 'pi pi-moon'"
+                [rounded]="true"
+                [text]="true"
+                severity="secondary"
+                (click)="toggleTema()"
+                pTooltip="Cambiar Tema (Claro / Oscuro)"
+            />
+        </div>
+    </header>
+
+    <!-- 2. BARRA DE FILTROS Y BÚSQUEDA -->
+    <div class="shrink-0 bg-surface-0/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-200 dark:border-surface-800 px-4 py-2 sm:px-6 flex items-center justify-between gap-3 flex-wrap z-20">
+        <!-- Búsqueda por texto -->
+        <div class="flex items-center gap-2 flex-1 min-w-[220px] max-w-md">
+            <span class="p-input-icon-left w-full relative">
+                <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-xs"></i>
+                <input
+                    type="text"
+                    pInputText
+                    [(ngModel)]="filtroTexto"
+                    (input)="actualizarMarcadores()"
+                    placeholder="Buscar por gradería, calle o sector..."
+                    class="w-full text-xs py-1.5 pl-8 pr-3 rounded-xl"
+                />
+            </span>
+        </div>
+
+        <!-- Filtros de disponibilidad y Controles del Mapa -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <button
+                type="button"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border"
+                [ngClass]="filtroEstado() === 'todas' ? 'bg-primary text-white border-primary shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 border-surface-200 dark:border-surface-700'"
+                (click)="filtroEstado.set('todas'); actualizarMarcadores()"
+            >
+                Todas ({{ graderias().length }})
+            </button>
+
+            <button
+                type="button"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border"
+                [ngClass]="filtroEstado() === 'con_libres' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 border-surface-200 dark:border-surface-700'"
+                (click)="filtroEstado.set('con_libres'); actualizarMarcadores()"
+            >
+                Con Butacas Libres
+            </button>
+
+            <button
+                type="button"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border"
+                [ngClass]="filtroEstado() === 'llenas' ? 'bg-red-600 text-white border-red-600 shadow-xs' : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 border-surface-200 dark:border-surface-700'"
+                (click)="filtroEstado.set('llenas'); actualizarMarcadores()"
+            >
+                Agotadas
+            </button>
+
+            <!-- Selector de Capa (Vectorial vs OSM Raster Estándar) -->
+            <button
+                type="button"
+                pButton
+                [label]="tipoCapa() === 'vector' ? 'Capa: Vectorial' : 'Capa: OSM Estándar'"
+                [icon]="tipoCapa() === 'vector' ? 'pi pi-map' : 'pi pi-globe'"
+                class="p-button-outlined p-button-secondary p-button-sm text-xs py-1.5 rounded-xl font-medium"
+                [class.p-button-info]="tipoCapa() === 'raster'"
+                (click)="alternarTipoCapa()"
+                [pTooltip]="tipoCapa() === 'vector' ? 'Cambiar a capa estándar OpenStreetMap (máxima compatibilidad)' : 'Cambiar a capa vectorial de alta resolución'"
+            ></button>
+
+            <!-- Enfocar Ruta y Graderías -->
+            <button
+                type="button"
+                pButton
+                icon="pi pi-search-plus"
+                label="Enfocar Todo"
+                class="p-button-outlined p-button-secondary p-button-sm text-xs py-1.5 rounded-xl font-medium"
+                (click)="ajustarVista()"
+                pTooltip="Ajustar la vista para ver toda la ruta oficial y graderías"
+            ></button>
+
+            <!-- Centrar en Plaza 10 de Febrero -->
+            <button
+                type="button"
+                pButton
+                icon="pi pi-compass"
+                label="Centrar Oruro"
+                class="p-button-outlined p-button-secondary p-button-sm text-xs py-1.5 rounded-xl font-medium"
+                (click)="centrarEnOruro()"
+                pTooltip="Centrar vista en Plaza 10 de Febrero"
+            ></button>
+
+            <!-- Alternar Lista Lateral -->
+            <button
+                type="button"
+                pButton
+                [icon]="listaLateralVisible() ? 'pi pi-chevron-left' : 'pi pi-list'"
+                class="p-button-text p-button-secondary p-button-sm text-xs p-2 rounded-xl"
+                (click)="alternarListaLateral()"
+                [pTooltip]="listaLateralVisible() ? 'Ocultar listado' : 'Ver listado de graderías'"
+            ></button>
+        </div>
+    </div>
+
+    <!-- 3. CUERPO PRINCIPAL: MAPA + PANEL LATERAL -->
+    <div class="relative flex-1 w-full min-h-0 flex overflow-hidden">
+        
+        <!-- LIENZO DEL MAPA MAPLIBRE -->
+        <div class="relative flex-1 w-full h-full min-h-0 overflow-hidden bg-surface-100 dark:bg-surface-950">
+            <div
+                #publicMapContainer
+                id="publicMapContainer"
+                class="w-full h-full public-map-container"
+                style="width: 100%; height: 100%; min-height: 100%;"
+                [ngClass]="{ 'map-dark-raster': layoutService.isDarkTheme() && tipoCapa() === 'raster' }"
+            ></div>
+
+            <!-- FICHA FLOTANTE DE LA GRADERÍA SELECCIONADA -->
+            @if (graderiaSeleccionada(); as sel) {
+                <div class="absolute top-4 left-4 right-14 sm:right-auto sm:w-[380px] z-20 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md border border-surface-200 dark:border-surface-700 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-fadein">
+                    
+                    <!-- Encabezado de la Ficha -->
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <h3 class="text-base font-black text-surface-900 dark:text-surface-0 truncate leading-snug">
+                                {{ sel.nombre || 'Gradería Oficial' }}
+                            </h3>
+                            @if (sel.direccion) {
+                                <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5 truncate">
+                                    <i class="pi pi-map-marker text-[10px] mr-1 text-primary"></i>
+                                    {{ sel.direccion }}
+                                </p>
+                            }
+                        </div>
+
+                        <button
+                            type="button"
+                            pButton
+                            icon="pi pi-times"
+                            class="p-button-text p-button-secondary p-button-sm p-0 w-7 h-7 rounded-full shrink-0"
+                            (click)="deseleccionar()"
+                            pTooltip="Cerrar ficha"
+                        ></button>
+                    </div>
+
+                    <!-- Nivel de Ocupación -->
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold text-surface-600 dark:text-surface-300">Nivel de Ocupación:</span>
+                            <span class="font-black text-primary">{{ calcularPorcentajeOcupacion(sel) }}%</span>
+                        </div>
+                        <p-progressBar
+                            [value]="calcularPorcentajeOcupacion(sel)"
+                            [showValue]="false"
+                            styleClass="h-2 rounded-full"
+                        />
+                    </div>
+
+                    <!-- Métricas de Butacas -->
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <span class="text-[10px] text-emerald-600 font-semibold block">Libres</span>
+                            <span class="text-sm font-black text-emerald-700 dark:text-emerald-400">
+                                {{ sel.libres_count ?? 0 }}
+                            </span>
+                        </div>
+                        <div class="p-2 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
+                            <span class="text-[10px] text-surface-400 font-semibold block">Ocupadas</span>
+                            <span class="text-sm font-bold text-surface-700 dark:text-surface-300">
+                                {{ (sel.pagados_count ?? 0) + (sel.reservados_count ?? 0) }}
+                            </span>
+                        </div>
+                        <div class="p-2 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
+                            <span class="text-[10px] text-surface-400 font-semibold block">Aforo Total</span>
+                            <span class="text-sm font-bold text-surface-900 dark:text-surface-0">
+                                {{ sel.capacidad_total || (sel.filas * sel.columnas) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Operador / Vendedor Asignado -->
+                    @if (sel.user?.telefono_contacto_1 || sel.user?.name) {
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-surface-50 dark:bg-surface-800/80 border border-surface-200 dark:border-surface-700 text-xs">
+                            <div class="flex items-center gap-2 truncate">
+                                <i class="pi pi-user text-primary"></i>
+                                <span class="truncate font-medium text-surface-800 dark:text-surface-200">
+                                    {{ sel.user?.name || 'Vendedor Autorizado' }}
+                                </span>
+                            </div>
+                            @if (sel.user?.telefono_contacto_1) {
+                                <span class="font-mono text-surface-500">{{ sel.user?.telefono_contacto_1 }}</span>
+                            }
+                        </div>
+                    }
+
+                    <!-- Botones de Acción Inmediata -->
+                    <div class="flex flex-col gap-2 pt-1 border-t border-surface-200 dark:border-surface-700">
+                        <!-- Botón 1: Ver Butacas en Vivo (Ruta Pública) -->
+                        <a
+                            [routerLink]="['/g', sel.code]"
+                            class="w-full py-2.5 px-3 rounded-xl bg-primary hover:bg-primary-emphasis text-white font-bold text-xs text-center transition-all no-underline shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                            <i class="pi pi-ticket"></i>
+                            <span>Ver Butacas en Vivo & Elegir</span>
+                        </a>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <!-- Botón 2: Contactar Vendedor por WhatsApp -->
+                            <a
+                                [href]="obtenerWhatsAppUrl(sel)"
+                                target="_blank"
+                                class="py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs text-center transition-all no-underline shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <i class="pi pi-whatsapp"></i>
+                                <span>WhatsApp</span>
+                            </a>
+
+                            <!-- Botón 3: Cómo llegar en Google Maps o Llamar -->
+                            @if (sel.user?.telefono_contacto_1) {
+                                <a
+                                    [href]="'tel:' + sel.user?.telefono_contacto_1"
+                                    class="py-2 px-2.5 rounded-xl bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-800 dark:text-surface-100 font-semibold text-xs text-center transition-all no-underline border border-surface-200 dark:border-surface-700 flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <i class="pi pi-phone text-primary"></i>
+                                    <span>Llamar</span>
+                                </a>
+                            } @else {
+                                <a
+                                    [href]="obtenerGoogleMapsNavUrl(sel)"
+                                    target="_blank"
+                                    class="py-2 px-2.5 rounded-xl bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-800 dark:text-surface-100 font-semibold text-xs text-center transition-all no-underline border border-surface-200 dark:border-surface-700 flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <i class="pi pi-compass text-primary"></i>
+                                    <span>Cómo llegar</span>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- LEYENDA DEL MAPA EN LA ESQUINA INFERIOR IZQUIERDA -->
+            <div class="absolute bottom-4 left-4 z-10 bg-surface-0/95 dark:bg-surface-900/95 backdrop-blur-md text-surface-700 dark:text-surface-200 px-3.5 py-2 rounded-2xl shadow-lg border border-surface-200 dark:border-surface-700 flex items-center gap-3 text-xs">
+                <div class="flex items-center gap-1.5 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span>Disponible</span>
+                </div>
+                <div class="flex items-center gap-1.5 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <span>Pocas</span>
+                </div>
+                <div class="flex items-center gap-1.5 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                    <span>Agotada</span>
+                </div>
+                @if (rutaActiva()) {
+                    <span class="text-surface-300 dark:text-surface-600">|</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-1.5 rounded-full bg-primary"></span>
+                        <span class="text-primary font-bold">Ruta Oficial del Carnaval</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- 4. LISTADO LATERAL DE GRADERÍAS -->
+        @if (listaLateralVisible()) {
+            <aside class="w-80 md:w-96 h-full bg-surface-0 dark:bg-surface-900 border-l border-surface-200 dark:border-surface-800 flex flex-col z-10 shadow-lg animate-fadein shrink-0">
+                <div class="p-3 border-b border-surface-200 dark:border-surface-800 flex items-center justify-between">
+                    <span class="text-xs font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">
+                        Sectores Encontrados ({{ graderiasFiltradas().length }})
+                    </span>
+                    <button
+                        type="button"
+                        pButton
+                        icon="pi pi-times"
+                        class="p-button-text p-button-secondary p-button-sm p-0 w-6 h-6 rounded-full"
+                        (click)="listaLateralVisible.set(false)"
+                        pTooltip="Cerrar lista"
+                    ></button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5">
+                    @for (g of graderiasFiltradas(); track g.id) {
+                        @let libres = g.libres_count ?? 0;
+                        @let esSeleccionada = graderiaSeleccionada()?.id === g.id;
+
+                        <div
+                            [id]="'sector-card-' + g.id"
+                            class="p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2.5 select-none"
+                            [ngClass]="esSeleccionada ? 'sector-card-active' : 'bg-surface-50 dark:bg-surface-800/60 border-surface-200 dark:border-surface-700/60 hover:border-surface-300 dark:hover:border-surface-600'"
+                            (click)="seleccionarGraderia(g)"
+                        >
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <h4 class="text-xs font-bold text-surface-900 dark:text-surface-0 truncate">
+                                        {{ g.nombre || 'Gradería' }}
+                                    </h4>
+                                    @if (g.direccion) {
+                                        <p class="text-[11px] text-surface-500 dark:text-surface-400 truncate mt-0.5">
+                                            <i class="pi pi-map-marker text-[9px] mr-1 text-primary"></i>
+                                            {{ g.direccion }}
+                                        </p>
+                                    }
+                                </div>
+
+                                <span
+                                    class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                                    [ngClass]="libres > 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/15 text-red-600 dark:text-red-400'"
+                                >
+                                    {{ libres > 0 ? libres + ' libres' : 'Agotada' }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-center justify-between text-[11px] text-surface-500 dark:text-surface-400">
+                                <span>Aforo: {{ g.capacidad_total || (g.filas * g.columnas) }}</span>
+                                @if (g.user?.name) {
+                                    <span class="truncate max-w-[130px]" pTooltip="Vendedor asignado">
+                                        <i class="pi pi-user text-[9px] mr-1"></i>{{ g.user?.name }}
+                                    </span>
+                                }
+                            </div>
+
+                            <!-- Botones Rápidos de Acción: Ver Butacas y Contactar -->
+                            <div class="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-surface-200/60 dark:border-surface-700/60" (click)="$event.stopPropagation()">
+                                <a
+                                    [routerLink]="['/g', g.code]"
+                                    class="py-1.5 px-2 rounded-xl bg-primary hover:bg-primary-emphasis text-white font-bold text-[11px] text-center transition-all no-underline shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                                    pTooltip="Abrir plano y elegir butacas"
+                                >
+                                    <i class="pi pi-ticket text-[10px]"></i>
+                                    <span>Ver Butacas</span>
+                                </a>
+
+                                <a
+                                    [href]="obtenerWhatsAppUrl(g)"
+                                    target="_blank"
+                                    class="py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] text-center transition-all no-underline shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                                    pTooltip="Contactar al vendedor por WhatsApp"
+                                >
+                                    <i class="pi pi-whatsapp text-[11px]"></i>
+                                    <span>WhatsApp</span>
+                                </a>
+                            </div>
+                        </div>
+                    } @empty {
+                        <div class="p-8 text-center text-xs text-surface-400 flex flex-col items-center gap-2">
+                            <i class="pi pi-inbox text-2xl text-surface-300"></i>
+                            <span>No se encontraron graderías con los filtros actuales.</span>
+                        </div>
+                    }
+                </div>
+            </aside>
+        }
+    </div>
+</div>

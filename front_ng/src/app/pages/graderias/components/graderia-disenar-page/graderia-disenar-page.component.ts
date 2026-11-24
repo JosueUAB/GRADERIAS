@@ -11,6 +11,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Graderia, CrearGraderiaDTO } from '@/app/core/interfaces/graderia.interface';
 import { GraderiaStore } from '@/app/core/store/graderia.store';
+import { RutaStore } from '@/app/core/store/ruta.store';
 import { NotificacionService } from '@/app/core/services/notificacion.service';
 import { GraderiaPreviewMatrizComponent } from '../graderia-preview-matriz/graderia-preview-matriz.component';
 import { MapaCoordenadasDialogComponent } from '../mapa-coordenadas-dialog/mapa-coordenadas-dialog.component';
@@ -36,6 +37,7 @@ import { MapaCoordenadasDialogComponent } from '../mapa-coordenadas-dialog/mapa-
 })
 export class GraderiaDisenarPageComponent implements OnInit {
     store = inject(GraderiaStore);
+    rutaStore = inject(RutaStore);
     private notificacion = inject(NotificacionService);
     private router = inject(Router);
     private route = inject(ActivatedRoute);
@@ -53,6 +55,8 @@ export class GraderiaDisenarPageComponent implements OnInit {
     activo: boolean = true;
 
     ngOnInit(): void {
+        this.rutaStore.cargarRutaActiva();
+
         const qLat = this.route.snapshot.queryParamMap.get('lat');
         const qLng = this.route.snapshot.queryParamMap.get('lng');
         if (qLat && qLng) {
@@ -99,6 +103,16 @@ export class GraderiaDisenarPageComponent implements OnInit {
         if (!this.nombre.trim()) {
             this.notificacion.advertencia('Ingresa un nombre para la gradería');
             return;
+        }
+
+        if (this.latitud != null && this.longitud != null && this.rutaStore.tieneRutaActiva()) {
+            const validacion = this.rutaStore.validarPunto(this.latitud, this.longitud);
+            if (!validacion.valido) {
+                this.notificacion.advertencia(
+                    `Ubicación fuera de rango: la posición está a ${validacion.distancia}m de la ruta oficial (límite permitido: ${validacion.tolerancia}m). Ajusta el punto dentro del área de la ruta.`
+                );
+                return;
+            }
         }
 
         const dto: CrearGraderiaDTO = {

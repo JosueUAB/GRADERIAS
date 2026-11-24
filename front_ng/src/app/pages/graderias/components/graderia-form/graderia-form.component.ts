@@ -10,6 +10,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
 import { Graderia, CrearGraderiaDTO, ActualizarGraderiaDTO } from '@/app/core/interfaces/graderia.interface';
 import { GraderiaStore } from '@/app/core/store/graderia.store';
+import { RutaStore } from '@/app/core/store/ruta.store';
 import { NotificacionService } from '@/app/core/services/notificacion.service';
 import { GraderiaPreviewMatrizComponent } from '../graderia-preview-matriz/graderia-preview-matriz.component';
 import { MapaCoordenadasDialogComponent } from '../mapa-coordenadas-dialog/mapa-coordenadas-dialog.component';
@@ -34,6 +35,7 @@ import { MapaCoordenadasDialogComponent } from '../mapa-coordenadas-dialog/mapa-
 })
 export class GraderiaFormComponent implements OnInit {
     store = inject(GraderiaStore);
+    rutaStore = inject(RutaStore);
     notificacion = inject(NotificacionService);
 
     visible = input<boolean>(false);
@@ -139,6 +141,16 @@ export class GraderiaFormComponent implements OnInit {
         if (!this.nombre.trim()) {
             this.notificacion.advertencia('Ingresa un nombre para la gradería');
             return;
+        }
+
+        if (this.latitud != null && this.longitud != null && this.rutaStore.tieneRutaActiva()) {
+            const validacion = this.rutaStore.validarPunto(this.latitud, this.longitud);
+            if (!validacion.valido) {
+                this.notificacion.advertencia(
+                    `Ubicación fuera de rango: la posición está a ${validacion.distancia}m de la ruta oficial (límite: ${validacion.tolerancia}m). Ajusta el punto dentro del área autorizada.`
+                );
+                return;
+            }
         }
 
         if (this.esEdicion() && this.graderia()) {

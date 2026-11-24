@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
@@ -25,7 +25,7 @@ interface FilaMatriz {
 @Component({
     selector: 'app-public-graderia',
     standalone: true,
-    imports: [CommonModule, ButtonModule, TagModule, TooltipModule],
+    imports: [CommonModule, RouterModule, ButtonModule, TagModule, TooltipModule],
     templateUrl: './public-graderia.component.html'
 })
 export class PublicGraderiaComponent implements OnInit {
@@ -37,6 +37,27 @@ export class PublicGraderiaComponent implements OnInit {
     graderia = signal<Graderia | null>(null);
     asientos = signal<Asiento[]>([]);
     cargando = signal<boolean>(false);
+
+    readonly tieneCoordenadas = computed(() => {
+        const g = this.graderia();
+        return g?.latitud != null && g?.longitud != null;
+    });
+
+    readonly googleMapsUrl = computed(() => {
+        const g = this.graderia();
+        if (g?.latitud != null && g?.longitud != null) {
+            return `https://www.google.com/maps?q=${g.latitud},${g.longitud}`;
+        }
+        return null;
+    });
+
+    readonly googleMapsDirUrl = computed(() => {
+        const g = this.graderia();
+        if (g?.latitud != null && g?.longitud != null) {
+            return `https://www.google.com/maps/dir/?api=1&destination=${g.latitud},${g.longitud}`;
+        }
+        return null;
+    });
 
     telefonosContacto = computed(() => {
         const g: any = this.graderia();

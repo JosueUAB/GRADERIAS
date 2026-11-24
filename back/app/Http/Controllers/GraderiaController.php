@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Graderia;
+use App\Models\Ruta;
+use App\Services\GeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -15,6 +17,40 @@ class GraderiaController extends Controller
         } while (Graderia::where('code', $code)->exists());
 
         return $code;
+    }
+
+    /**
+     * Valida que las coordenadas de la gradería se encuentren dentro del rango
+     * de la ruta oficial trazada por el administrador.
+     */
+    private function verificarRangoRuta(?float $latitud, ?float $longitud): void
+    {
+        if ($latitud === null || $longitud === null) {
+            return;
+        }
+
+        $rutaActiva = Ruta::where('activo', true)->latest()->first();
+        if (!$rutaActiva || empty($rutaActiva->coordenadas)) {
+            return; // Si aún no hay ruta activa trazada, se permite registrar
+        }
+
+        $distancia = GeoService::distanciaPuntoAPolilinea($latitud, $longitud, $rutaActiva->coordenadas);
+        $tolerancia = (int) $rutaActiva->distancia_tolerancia_metros;
+
+        if ($distancia > $tolerancia) {
+            $distanciaRedondeada = round($distancia, 1);
+            abort(response()->json([
+                'message' => "La ubicación seleccionada está a {$distanciaRedondeada}m de la ruta oficial, excediendo el rango máximo permitido de {$tolerancia}m establecido por el administrador.",
+                'errors' => [
+                    'coordenadas' => [
+                        "Ubicación fuera del rango de la ruta '{$rutaActiva->nombre}'. Distancia: {$distanciaRedondeada}m (Máximo permitido: {$tolerancia}m)"
+                    ]
+                ],
+                'distancia_metros' => $distanciaRedondeada,
+                'tolerancia_metros' => $tolerancia,
+                'ruta_nombre' => $rutaActiva->nombre,
+            ], 422));
+        }
     }
 
     public function repair(Request $request, Graderia $graderia)
@@ -155,6 +191,11 @@ class GraderiaController extends Controller
             'activo' => 'required|boolean',
         ]);
 
+        $this->verificarRangoRuta(
+            isset($data['latitud']) ? (float)$data['latitud'] : null,
+            isset($data['longitud']) ? (float)$data['longitud'] : null
+        );
+
         $g = new Graderia();
         $g->fill($data);
         $g->user_id = $user->id;
@@ -186,6 +227,11 @@ class GraderiaController extends Controller
             'activo' => 'required|boolean',
             'regenerar_asientos' => 'nullable|boolean',
         ]);
+
+        $this->verificarRangoRuta(
+            isset($data['latitud']) ? (float)$data['latitud'] : null,
+            isset($data['longitud']) ? (float)$data['longitud'] : null
+        );
 
         $graderia->fill($data);
         $graderia->capacidad_total = ((int) $data['filas']) * ((int) $data['columnas']);
@@ -256,6 +302,45 @@ class GraderiaController extends Controller
                 'start_top'    => (bool) $graderia->start_top,
                 'start_left'   => (bool) $graderia->start_left,
             ],
+        ]);
+    }
+
+    // GET /public/graderias-mapa
+    public function publicMapa(Request $request)
+    {
+        $graderias = Graderia::where('activo', true)
+            ->whereNotNull('latitud')
+            ->whereNotNull('longitud')
+            ->with(['user:id,name,username,telefono_contacto_1,telefono_contacto_2'])
+            ->withCount([
+                'asientos as total_asientos',
+                'asientos as libres_count' => function ($q) {
+                    $q->where('estado', 'LIBRE');
+                },
+                'asientos as reservados_count' => function ($q) {
+                    $q->where('estado', 'RESERVADO');
+                },
+                'asientos as pagados_count' => function ($q) {
+                    $q->where('estado', 'PAGADO');
+                },
+            ])
+            ->get([
+                'id',
+                'user_id',
+                'nombre',
+                'codigo',
+                'code',
+                'direccion',
+                'latitud',
+                'longitud',
+                'filas',
+                'columnas',
+                'capacidad_total',
+                'activo'
+            ]);
+
+        return response()->json([
+            'graderias' => $graderias
         ]);
     }
 }

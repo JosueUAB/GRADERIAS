@@ -55,6 +55,12 @@ import {AppFloatingConfigurator} from "@/app/layout/component/app.floatingconfig
                         <span>Pricing</span>
                     </a>
                 </li>
+                <li>
+                    <a routerLink="/mapa" pRipple class="px-0 py-4 text-primary font-bold text-xl flex items-center gap-1.5 no-underline">
+                        <i class="pi pi-map"></i>
+                        <span>Mapa Carnaval</span>
+                    </a>
+                </li>
             </ul>
             <div class="flex border-t lg:border-t-0 border-surface py-4 lg:py-0 mt-4 lg:mt-0 gap-2">
                 <button pButton pRipple label="Login" routerLink="/auth/login" [rounded]="true" [text]="true"></button>
